@@ -77,9 +77,12 @@ Templates allow you to create reusable alt text patterns for your product images
 ### Available Variables
 
 - `{title}` - The product title
-- `{vendor}` - The product vendor/brand
-- `{type}` - The product type
+- `{vendor}` or `{brand}` - The product vendor/brand
+- `{type}` or `{category}` - The product type/category
 - `{tags}` - The product tags (comma separated)
+- `{store}` - Your store name
+- `{sku}` - Product SKU codes (if available)
+- `{color}` - Detected color from product title
 
 ### Template Examples
 
@@ -96,6 +99,11 @@ Templates allow you to create reusable alt text patterns for your product images
 **SEO-optimized template:**
 ```
 Buy {title} from {vendor} - Premium {type}
+```
+
+**Template with store and color:**
+```
+{color} {title} from {store} - {sku}
 ```
 
 ### Best Practices
@@ -122,6 +130,7 @@ This app helps you efficiently manage alt text for your Shopify product images u
 2. **Product Management**
    - Import products directly from your Shopify store
    - Filter and search products easily
+   - Select specific products to work with
 
 3. **Image Alt Text Management**
    - View all product images in an organized grid
@@ -152,12 +161,14 @@ This app helps you efficiently manage alt text for your Shopify product images u
    * Enter your Shop URL and Access Token in the sidebar
 
 2. **Create Alt Text Templates**
-   * Switch to the Templates tab in the sidebar
+   * Switch to the Templates tab
    * Create templates using variables like {title}, {vendor}, etc.
+   * You can now use additional variables like {color}, {sku}, and {store}
 
 3. **Manage Product Images**
    * Import products from your store
-   * Apply templates to product images
+   * You can choose to fetch all products or select specific ones
+   * Apply templates to product images individually or in bulk
    * Review and sync changes back to Shopify
 """,
 
@@ -173,6 +184,7 @@ This tab allows you to manage your Shopify products and their images.
 2. **Search** - Find specific products by name
 3. **Coverage Tracking** - See alt text coverage for each product
 4. **Product Details** - View and edit individual product images
+5. **Selective Fetching** - Choose specific products to work with
 
 ### Tips for Efficient Management
 
@@ -180,6 +192,7 @@ This tab allows you to manage your Shopify products and their images.
 - **Use Search** - For stores with many products, use the search function to find specific items
 - **Monitor Coverage** - The "Coverage" column shows what percentage of images have alt text
 - **Batch Process** - Work through products with the lowest coverage first
+- **Use Selective Fetching** - For stores with many products, select only the ones you want to work with
 
 ### Troubleshooting
 
@@ -239,7 +252,7 @@ Alt text (alternative text) provides a textual alternative to non-text content l
 ### Template Usage
 
 #### Q: What variables can I use in templates?
-**A:** You can use `{title}`, `{vendor}`, `{type}`, and `{tags}` in your templates.
+**A:** You can use `{title}`, `{vendor}` or `{brand}`, `{type}` or `{category}`, `{tags}`, `{store}`, `{sku}`, and `{color}` in your templates.
 
 #### Q: Can I use HTML in my alt text?
 **A:** No, alt text should be plain text only. HTML tags will be displayed as text.
