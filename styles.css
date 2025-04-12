@@ -1,0 +1,64 @@
+.main {
+    padding: 2rem;
+}
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2px;
+}
+.stTabs [data-baseweb="tab"] {
+    padding: 10px 16px;
+    border-radius: 4px 4px 0px 0px;
+}
+.status-connected {
+    color: green;
+    font-weight: bold;
+}
+.status-disconnected {
+    color: red;
+    font-weight: bold;
+}
+.template-card {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+.image-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.image-card {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    width: 220px;
+}
+.alt-preview {
+    background-color: #f0f0f0;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 12px;
+    min-height: 40px;
+}
+.metric-card {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+}
+.metric-value {
+    font-size: 24px;
+    font-weight: bold;
+}
+.coverage-bar {
+    height: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+.coverage-progress {
+    height: 10px;
+    background-color: #4CAF50;
+    border-radius: 5px;
+}
