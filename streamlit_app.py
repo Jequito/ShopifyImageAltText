@@ -12,7 +12,6 @@ import re
 
 # Load environment variables if .env file exists
 load_dotenv()
-
 # Import guides and helper modules
 from guides import load_guides
 from shopify_api import make_shopify_request, fetch_products, update_image_alt_text
