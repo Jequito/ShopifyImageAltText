@@ -528,7 +528,7 @@ elif st.session_state.active_tab == "products":
                             
                         st.markdown("</div>", unsafe_allow_html=True)
             else:
-    if st.session_state.products:
-        st.info("No products match your search criteria")
-    else:
-    st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
+                if st.session_state.products:
+                    st.info("No products match your search criteria")
+                else:
+                    st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
