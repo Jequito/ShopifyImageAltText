@@ -10,11 +10,6 @@ import os
 from dotenv import load_dotenv
 import re
 
-# Import guides and helper modules
-from guides import load_guides
-from shopify_api import make_shopify_request, fetch_products, update_image_alt_text
-from enhanced_debug_tools import display_debug_info
-
 # Load environment variables if .env file exists
 load_dotenv()
 
