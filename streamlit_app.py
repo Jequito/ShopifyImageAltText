@@ -532,3 +532,450 @@ elif st.session_state.active_tab == "products":
                     st.info("No products match your search criteria")
                 else:
                     st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
+# 1. Fix for blank Products tab when viewing details
+
+# Find this code section in your Products tab:
+if st.session_state.current_product is None:
+    # Products list view code here...
+else:
+    # ADD THIS SECTION to handle the product details view
+    product = st.session_state.current_product
+    
+    st.header(f"Product: {product['title']}")
+    
+    # Back button
+    if st.button("Back to Products List", key="back_to_products"):
+        st.session_state.current_product = None
+        st.rerun()
+    
+    # Product information section
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.subheader("Product Details")
+        st.caption(f"Vendor: {product['vendor']} | Type: {product['type']}")
+        
+        if product["description"]:
+            with st.expander("Description"):
+                st.write(product["description"])
+    
+    with col2:
+        # Alt text coverage for this product
+        total_images = len(product["images"])
+        images_with_alt = sum(1 for img in product["images"] if img["alt"])
+        coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
+        
+        st.metric("Alt Text Coverage", f"{coverage:.1f}%", f"{images_with_alt}/{total_images} images")
+    
+    st.divider()
+    
+    # Images section
+    st.subheader("Images")
+    
+    if product["images"]:
+        # Template selection for bulk application
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            bulk_template = st.selectbox(
+                "Select Template",
+                options=[t["id"] for t in st.session_state.templates],
+                format_func=lambda x: next((t["name"] for t in st.session_state.templates if t["id"] == x), x),
+                key="bulk_template"
+            )
+        
+        with col2:
+            if st.button("Apply to All Images"):
+                if bulk_template:
+                    for image in product["images"]:
+                        apply_template_to_image(product, image["id"], bulk_template)
+                    st.success("Template applied to all images")
+                else:
+                    st.error("Please select a template")
+        
+        with col3:
+            if st.button("Clear All Alt Text"):
+                for image in product["images"]:
+                    image["alt"] = ""
+                    image["applied_template"] = None
+                    update_image_alt_text(product["id"], image["id"], "")
+                st.success("All alt text cleared")
+        
+        # Display images in a grid
+        num_cols = 3
+        cols = st.columns(num_cols)
+        
+        for i, image in enumerate(product["images"]):
+            col_idx = i % num_cols
+            
+            with cols[col_idx]:
+                st.markdown(f'<div class="image-card">', unsafe_allow_html=True)
+                
+                # Display image
+                try:
+                    response = requests.get(image["src"])
+                    img = Image.open(BytesIO(response.content))
+                    st.image(img, width=200)
+                except:
+                    st.image("https://via.placeholder.com/200x200?text=Image+Not+Available")
+                
+                # Image position
+                st.caption(f"Position: {i+1}")
+                
+                # Template selector for this image
+                template_options = [("", "None")] + [(t["id"], t["name"]) for t in st.session_state.templates]
+                selected_template = st.selectbox(
+                    "Template",
+                    options=[t[0] for t in template_options],
+                    format_func=lambda x: next((t[1] for t in template_options if t[0] == x), x),
+                    key=f"template_{image['id']}",
+                    index=0 if not image["applied_template"] else next((i for i, t in enumerate(template_options) if t[0] == image["applied_template"]), 0)
+                )
+                
+                # Preview current alt text
+                st.markdown('<div class="alt-preview">', unsafe_allow_html=True)
+                st.write("Alt Text Preview:")
+                if selected_template:
+                    preview = preview_template(
+                        next((t["template"] for t in st.session_state.templates if t["id"] == selected_template), ""),
+                        product
+                    )
+                    st.text(preview[:100] + ("..." if len(preview) > 100 else ""))
+                else:
+                    st.text(image["alt"][:100] + ("..." if len(image["alt"]) > 100 else ""))
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Apply template button
+                if st.button("Apply", key=f"apply_{image['id']}"):
+                    if selected_template:
+                        new_alt = apply_template_to_image(product, image["id"], selected_template)
+                        st.success(f"Applied template: {new_alt[:50]}...")
+                    else:
+                        # Clear alt text
+                        image["alt"] = ""
+                        image["applied_template"] = None
+                        update_image_alt_text(product["id"], image["id"], "")
+                        st.success("Alt text cleared")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("This product has no images")
+    
+    # Variants section
+    if product["variants"]:
+        with st.expander("Variants"):
+            variant_data = []
+            for variant in product["variants"]:
+                variant_data.append({
+                    "ID": variant["id"],
+                    "Title": variant["title"],
+                    "Price": f"${variant['price']}"
+                })
+            
+            st.dataframe(pd.DataFrame(variant_data).set_index("ID"), use_container_width=True)
+
+# 2. Fix for Connect tab redirect - find the Connect tab section and modify the success handler:
+
+# Replace this:
+if 200 <= raw_response.status_code < 300:
+    st.session_state.shopify_connected = True
+    try:
+        response_json = raw_response.json()
+        if "shop" in response_json:
+            st.success(f"✅ Connected to {response_json['shop'].get('name', 'Shopify store')} successfully!")
+        else:
+            st.success("✅ Connected to Shopify successfully!")
+    except:
+        st.success("✅ Connected to Shopify successfully!")
+        
+    # Redirect to dashboard - REMOVE THIS LINE
+    st.session_state.active_tab = "dashboard"
+    st.rerun()
+
+# With this (keeps user on connect tab):
+if 200 <= raw_response.status_code < 300:
+    st.session_state.shopify_connected = True
+    try:
+        response_json = raw_response.json()
+        if "shop" in response_json:
+            st.success(f"✅ Connected to {response_json['shop'].get('name', 'Shopify store')} successfully!")
+        else:
+            st.success("✅ Connected to Shopify successfully!")
+    except:
+        st.success("✅ Connected to Shopify successfully!")
+    
+    # Don't redirect, just rerun to refresh the UI
+    st.rerun()
+
+# 3. Add product selection functionality - enhance the product fetching in the shopify_api.py file:
+
+# Add this function to shopify_api.py:
+def fetch_selected_products(selected_ids=None) -> List[Dict]:
+    """Fetch specific products from Shopify using GraphQL API
+    
+    Args:
+        selected_ids: Optional list of product IDs to fetch. If None, fetches all products.
+    """
+    if selected_ids:
+        # Build a GraphQL query with product ID filter
+        id_filter = ", ".join([f'"{id}"' for id in selected_ids])
+        query = f"""
+        {{
+          products(first: 50, query: "id:{id_filter}") {{
+            edges {{
+              node {{
+                id
+                title
+                description
+                vendor
+                productType
+                tags
+                images(first: 20) {{
+                  edges {{
+                    node {{
+                      id
+                      url
+                      altText
+                    }}
+                  }}
+                }}
+                variants(first: 10) {{
+                  edges {{
+                    node {{
+                      id
+                      title
+                      price
+                      sku
+                    }}
+                  }}
+                }}
+              }}
+            }}
+          }}
+        }}
+        """
+    else:
+        # Fetch all products (original query with added SKU field)
+        query = """
+        {
+          products(first: 50) {
+            edges {
+              node {
+                id
+                title
+                description
+                vendor
+                productType
+                tags
+                images(first: 20) {
+                  edges {
+                    node {
+                      id
+                      url
+                      altText
+                    }
+                  }
+                }
+                variants(first: 10) {
+                  edges {
+                    node {
+                      id
+                      title
+                      price
+                      sku
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+    
+    data = {"query": query}
+    result = make_shopify_request("/graphql.json", "POST", data)
+    
+    products = []
+    if result and "data" in result and "products" in result["data"]:
+        for edge in result["data"]["products"]["edges"]:
+            product = edge["node"]
+            
+            # Process images
+            images = []
+            if "images" in product and "edges" in product["images"]:
+                for img_edge in product["images"]["edges"]:
+                    image_node = img_edge["node"]
+                    images.append({
+                        "id": image_node["id"],
+                        "src": image_node["url"],
+                        "alt": image_node["altText"] or "",
+                        "applied_template": None
+                    })
+            
+            # Process variants
+            variants = []
+            skus = []
+            if "variants" in product and "edges" in product["variants"]:
+                for var_edge in product["variants"]["edges"]:
+                    variant_node = var_edge["node"]
+                    variants.append({
+                        "id": variant_node["id"],
+                        "title": variant_node["title"],
+                        "price": variant_node["price"],
+                        "sku": variant_node.get("sku", "")
+                    })
+                    if variant_node.get("sku"):
+                        skus.append(variant_node["sku"])
+            
+            product_data = {
+                "id": product["id"],
+                "title": product["title"],
+                "description": product["description"] or "",
+                "vendor": product["vendor"],
+                "type": product["productType"],
+                "tags": product["tags"],
+                "variants": variants,
+                "images": images,
+                "skus": skus,
+                "store": st.session_state.get("shop_name", "")
+            }
+            
+            products.append(product_data)
+    
+    return products
+
+# 4. Update template variables - modify the preview_template and apply_template_to_image functions:
+
+def preview_template(template: str, product: Dict) -> str:
+    """Generate a preview of a template with a product's data"""
+    preview = template
+    
+    # Replace variables with product data
+    variables = {
+        "{title}": product.get("title", ""),
+        "{vendor}": product.get("vendor", ""),
+        "{type}": product.get("type", ""),
+        "{tags}": ", ".join(product.get("tags", [])),
+        "{store}": product.get("store", ""),
+        "{sku}": ", ".join(product.get("skus", [])),
+        "{color}": extract_color_from_title(product.get("title", "")),
+        "{brand}": product.get("vendor", ""),  # Alias for vendor
+        "{category}": product.get("type", ""), # Alias for type
+    }
+    
+    for var, value in variables.items():
+        preview = preview.replace(var, str(value))
+    
+    return preview
+
+def apply_template_to_image(product: Dict, image_id: str, template_id: str) -> str:
+    """Apply a template to generate alt text for an image"""
+    template = next((t for t in st.session_state.templates if t["id"] == template_id), None)
+    if not template:
+        return ""
+    
+    alt_text = template["template"]
+    
+    # Replace variables with product data
+    variables = {
+        "{title}": product.get("title", ""),
+        "{vendor}": product.get("vendor", ""),
+        "{type}": product.get("type", ""),
+        "{tags}": ", ".join(product.get("tags", [])),
+        "{store}": product.get("store", ""),
+        "{sku}": ", ".join(product.get("skus", [])),
+        "{color}": extract_color_from_title(product.get("title", "")),
+        "{brand}": product.get("vendor", ""),  # Alias for vendor
+        "{category}": product.get("type", ""), # Alias for type
+    }
+    
+    for var, value in variables.items():
+        alt_text = alt_text.replace(var, str(value))
+    
+    # Find image and update its applied_template
+    for image in product["images"]:
+        if image["id"] == image_id:
+            image["alt"] = alt_text
+            image["applied_template"] = template_id
+            
+            # Update in Shopify
+            update_image_alt_text(product["id"], image_id, alt_text)
+            break
+    
+    return alt_text
+
+# Helper function to extract color from title
+def extract_color_from_title(title):
+    # Common colors that might appear in product titles
+    common_colors = [
+        "black", "white", "red", "blue", "green", "yellow", "purple", "pink", 
+        "orange", "brown", "grey", "gray", "silver", "gold", "beige", "navy", 
+        "teal", "cream", "ivory", "turquoise", "violet", "magenta", "indigo"
+    ]
+    
+    words = title.lower().split()
+    for word in words:
+        if word in common_colors:
+            return word
+    
+    return ""
+
+# 5. Add the product selection UI to the Products tab:
+
+# Replace the fetch button area:
+if st.button("Fetch Products", type="primary"):
+    with st.spinner("Fetching products from Shopify..."):
+        st.session_state.products = fetch_products()
+        st.success(f"Fetched {len(st.session_state.products)} products")
+        st.rerun()
+
+# With this:
+# Fetch products button with selection options
+fetch_col1, fetch_col2 = st.columns([3, 1])
+with fetch_col1:
+    fetch_option = st.radio(
+        "Fetch options:", 
+        ["All Products", "Selected Products"], 
+        horizontal=True
+    )
+
+with fetch_col2:
+    if st.button("Fetch Products", type="primary"):
+        with st.spinner("Fetching products from Shopify..."):
+            if fetch_option == "All Products":
+                st.session_state.products = fetch_products()
+                st.success(f"Fetched {len(st.session_state.products)} products")
+            else:
+                # If we already have products, show a selection UI
+                if st.session_state.products:
+                    product_ids = [p["id"] for p in st.session_state.products]
+                    product_titles = [p["title"] for p in st.session_state.products]
+                    selected_indices = st.multiselect(
+                        "Select products to fetch",
+                        options=range(len(product_ids)),
+                        format_func=lambda i: product_titles[i]
+                    )
+                    
+                    if selected_indices:
+                        selected_ids = [product_ids[i] for i in selected_indices]
+                        st.session_state.products = fetch_selected_products(selected_ids)
+                        st.success(f"Fetched {len(st.session_state.products)} selected products")
+                    else:
+                        st.warning("Please select at least one product")
+                else:
+                    # If no products loaded yet, fetch all first
+                    st.session_state.products = fetch_products()
+                    st.success(f"Fetched {len(st.session_state.products)} products")
+            st.rerun()
+
+# 6. Update the template guide to show the new variables:
+# Add this to the guides.py file in the "template_guide" section:
+
+### Available Variables
+
+- `{title}` - The product title
+- `{vendor}` or `{brand}` - The product vendor/brand
+- `{type}` or `{category}` - The product type/category
+- `{tags}` - The product tags (comma separated)
+- `{store}` - Your store name
+- `{sku}` - Product SKU codes (if available)
+- `{color}` - Detected color from product title
