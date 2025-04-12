@@ -191,6 +191,35 @@ with st.sidebar:
                 
                 # Test connection
                 try:
+                    # Enable more verbose debugging
+                    with st.expander("Debug Logs", expanded=True):
+                        st.info("Attempting to connect to Shopify...")
+                        st.code(f"URL: https://{formatted_shop_url}/admin/api/2023-10/shop.json")
+                        st.code(f"Headers: X-Shopify-Access-Token: {access_token[:6]}...{access_token[-4:] if len(access_token) > 10 else '****'}")
+                        
+                        # Try making a request with detailed response logging
+                        try:
+                            raw_response = requests.get(
+                                f"https://{formatted_shop_url}/admin/api/2023-10/shop.json",
+                                headers={
+                                    "X-Shopify-Access-Token": access_token,
+                                    "Content-Type": "application/json"
+                                }
+                            )
+                            
+                            st.code(f"Response Status: {raw_response.status_code}")
+                            st.code(f"Response Headers: {dict(raw_response.headers)}")
+                            
+                            # Display response content
+                            try:
+                                response_json = raw_response.json()
+                                st.json(response_json)
+                            except:
+                                st.code(f"Raw Response: {raw_response.text[:1000]}")
+                        except Exception as req_err:
+                            st.error(f"Request failed: {str(req_err)}")
+                    
+                    # Standard connection logic
                     response = make_shopify_request("/shop.json")
                     if response and "shop" in response:
                         st.session_state.shopify_connected = True
