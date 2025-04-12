@@ -13,7 +13,6 @@ import re
 # Import guides and helper modules
 from guides import load_guides
 from shopify_api import make_shopify_request, fetch_products, update_image_alt_text
-from enhanced_debug_tools import display_debug_info
 
 # Load environment variables if .env file exists
 load_dotenv()
@@ -23,7 +22,7 @@ st.set_page_config(
     page_title="Shopify Alt Text Manager",
     page_icon="🏪",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Load CSS styling
@@ -45,6 +44,10 @@ if 'recent_products' not in st.session_state:
     st.session_state.recent_products = []
 if 'alt_text_coverage' not in st.session_state:
     st.session_state.alt_text_coverage = 0
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "dashboard"
+if 'config_open' not in st.session_state:
+    st.session_state.config_open = True
 
 # Load guides from the guides module
 guides = load_guides()
@@ -112,32 +115,137 @@ def calculate_coverage_metrics() -> Tuple[int, int, float]:
     coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
     return images_with_alt, total_images, coverage
 
-# Sidebar setup and configuration
-with st.sidebar:
-    st.title("🏪 Shopify Alt Text Manager")
+# App header
+st.title("🏪 Shopify Alt Text Manager")
+
+# Display connection status
+if st.session_state.shopify_connected:
+    st.markdown(f"<span class='status-connected'>✅ Connected to Shopify</span>", unsafe_allow_html=True)
+else:
+    st.markdown(f"<span class='status-disconnected'>❌ Not connected to Shopify</span>", unsafe_allow_html=True)
+
+# Main navigation
+st.markdown("<div class='main-nav'>", unsafe_allow_html=True)
+tabs = {
+    "dashboard": "🏠 Dashboard",
+    "connect": "🔌 Connect",
+    "templates": "📝 Templates",
+    "products": "📋 Products",
+    "help": "❓ Help"
+}
+
+# Create horizontal tabs
+cols = st.columns(len(tabs))
+for i, (tab_id, tab_name) in enumerate(tabs.items()):
+    with cols[i]:
+        if st.button(tab_name, key=f"tab_{tab_id}", 
+                     use_container_width=True,
+                     type="primary" if st.session_state.active_tab == tab_id else "secondary"):
+            st.session_state.active_tab = tab_id
+            st.rerun()
+
+st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("<hr>", unsafe_allow_html=True)
+
+# Dashboard tab
+if st.session_state.active_tab == "dashboard":
+    # Help guide in the dashboard
+    with st.expander("📖 App User Guide", expanded=not st.session_state.shopify_connected):
+        st.markdown(guides["app_user_guide"])
     
-    # Connection status indicator
-    st.markdown(
-        "### Shopify Status\n" +
-        f"<span class=\"{'status-connected' if st.session_state.shopify_connected else 'status-disconnected'}\">{'Connected' if st.session_state.shopify_connected else 'Disconnected'}</span>",
-        unsafe_allow_html=True
-    )
-    
-    st.divider()
-    
-    # Configuration tabs
-    config_tab, templates_tab = st.tabs(["⚙️ Configuration", "📝 Templates"])
-    
-    with config_tab:
-        st.subheader("Shopify Connection")
+    # Metrics overview
+    if st.session_state.shopify_connected:
+        st.header("Dashboard")
         
-        # Add help expandable sections
-        with st.expander("📘 Connection Guide"):
-            st.markdown(guides["connection_guide"])
+        with st.container():
+            col1, col2, col3 = st.columns(3)
+            
+            # Calculate metrics
+            if st.session_state.products:
+                images_with_alt, total_images, coverage = calculate_coverage_metrics()
+                
+                with col1:
+                    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+                    st.markdown("##### Total Products")
+                    st.markdown(f"<div class='metric-value'>{len(st.session_state.products)}</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+                    st.markdown("##### Total Images")
+                    st.markdown(f"<div class='metric-value'>{total_images}</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+                    st.markdown("##### Alt Text Coverage")
+                    st.markdown(f"<div class='metric-value'>{coverage:.1f}%</div>", unsafe_allow_html=True)
+                    st.markdown("<div class='coverage-bar'>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='coverage-progress' style='width: {coverage}%'></div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                with st.container():
+                    st.info("No products loaded yet. Click 'Fetch Products' in the Products tab to import products from your Shopify store.")
+                    if st.button("Go to Products Tab"):
+                        st.session_state.active_tab = "products"
+                        st.rerun()
         
-        with st.expander("🔍 Troubleshooting"):
-            st.markdown(guides["troubleshooting"])
+        # Recent products
+        st.subheader("Recent Products")
+        if st.session_state.recent_products:
+            recent_cols = st.columns(3)
+            for i, product_id in enumerate(st.session_state.recent_products[-6:]):
+                product = next((p for p in st.session_state.products if p["id"] == product_id), None)
+                if product:
+                    col_idx = i % 3
+                    with recent_cols[col_idx]:
+                        st.markdown(f"<div class='product-card'>", unsafe_allow_html=True)
+                        st.markdown(f"**{product['title']}**")
+                        
+                        # Show product image if available
+                        if product["images"]:
+                            try:
+                                response = requests.get(product["images"][0]["src"])
+                                img = Image.open(BytesIO(response.content))
+                                st.image(img, width=150)
+                            except:
+                                st.image("https://via.placeholder.com/150x150?text=No+Image")
+                        else:
+                            st.image("https://via.placeholder.com/150x150?text=No+Image")
+                        
+                        # Alt text stats
+                        image_count = len(product["images"])
+                        alt_count = sum(1 for img in product["images"] if img["alt"])
+                        coverage = (alt_count / image_count * 100) if image_count > 0 else 0
+                        
+                        st.write(f"Images: {alt_count}/{image_count}")
+                        st.progress(coverage/100)
+                        
+                        if st.button("View Details", key=f"view_recent_{product['id']}"):
+                            st.session_state.current_product = product
+                            st.session_state.active_tab = "products"
+                            st.rerun()
+                        st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("No recent products viewed")
+    
+    else:
+        st.warning("Please connect to your Shopify store to get started.")
         
+        # Getting started guide
+        with st.expander("Getting Started Guide", expanded=True):
+            st.markdown(guides["getting_started"])
+            if st.button("Go to Connect Tab"):
+                st.session_state.active_tab = "connect"
+                st.rerun()
+
+# Connect tab
+elif st.session_state.active_tab == "connect":
+    st.header("Connect to Shopify")
+    
+    # Connection form
+    with st.form("connection_form"):
         # Help text with URL format instructions
         st.markdown("""
         **Shopify URL Format:**
@@ -167,8 +275,12 @@ with st.sidebar:
             type="password"
         )
         
-        # Connection test with detailed logs
-        if st.button("Connect to Shopify"):
+        show_debug = st.checkbox("Show debug logs", value=False)
+        
+        # Submit button
+        submitted = st.form_submit_button("Connect to Shopify", type="primary", use_container_width=True)
+        
+        if submitted:
             if shop_url and access_token:
                 # Store credentials in session state
                 st.session_state.shop_url = shop_url
@@ -183,35 +295,20 @@ with st.sidebar:
                 
                 st.session_state.shop_url = formatted_shop_url
                 
-                # Display connection details for debugging
-                with st.expander("Connection Details (for debugging)"):
-                    st.code(f"Shop URL: {formatted_shop_url}")
-                    token_preview = f"{access_token[:6]}...{access_token[-4:]}" if len(access_token) > 10 else "Invalid token format"
-                    st.code(f"Access Token: {token_preview}")
-                    st.code(f"API URL: https://{formatted_shop_url}/admin/api/2023-10/shop.json")
-                
                 # Test connection
-                try:
-                    # Show debug UI without nesting expanders
-                    st.info("Attempting to connect to Shopify...")
-                    st.code(f"URL: https://{formatted_shop_url}/admin/api/2023-10/shop.json")
-                    token_preview = f"{access_token[:6]}...{access_token[-4:]}" if len(access_token) > 10 else "****"
-                    st.code(f"Headers: X-Shopify-Access-Token: {token_preview}")
-                    
-                    # Debug toggle
-                    show_advanced_debug = st.checkbox("Show Detailed Connection Logs", value=True)
-                    if show_advanced_debug:
-                        st.subheader("Debug Logs")
-                        try:
-                            # Make a direct request to test connection
-                            raw_response = requests.get(
-                                f"https://{formatted_shop_url}/admin/api/2023-10/shop.json",
-                                headers={
-                                    "X-Shopify-Access-Token": access_token,
-                                    "Content-Type": "application/json"
-                                }
-                            )
-                            
+                with st.spinner("Connecting to Shopify..."):
+                    try:
+                        # Make a direct request to test connection
+                        raw_response = requests.get(
+                            f"https://{formatted_shop_url}/admin/api/2023-10/shop.json",
+                            headers={
+                                "X-Shopify-Access-Token": access_token,
+                                "Content-Type": "application/json"
+                            }
+                        )
+                        
+                        # Display debug info if requested
+                        if show_debug:
                             st.write("### Response Status")
                             st.code(f"Status Code: {raw_response.status_code}")
                             
@@ -225,7 +322,25 @@ with st.sidebar:
                                 st.json(response_json)
                             except:
                                 st.code(f"Raw Response: {raw_response.text[:1000]}")
+                        
+                        # Handle the connection result
+                        if 200 <= raw_response.status_code < 300:
+                            st.session_state.shopify_connected = True
+                            try:
+                                response_json = raw_response.json()
+                                if "shop" in response_json:
+                                    st.success(f"✅ Connected to {response_json['shop'].get('name', 'Shopify store')} successfully!")
+                                else:
+                                    st.success("✅ Connected to Shopify successfully!")
+                            except:
+                                st.success("✅ Connected to Shopify successfully!")
                                 
+                            # Redirect to dashboard
+                            st.session_state.active_tab = "dashboard"
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Failed to connect. Status code: {raw_response.status_code}")
+                            
                             # Status-based troubleshooting hints
                             if raw_response.status_code == 401:
                                 st.error("⚠️ Authentication failed (401). Your access token is invalid or expired.")
@@ -240,29 +355,40 @@ with st.sidebar:
                                 st.error("⚠️ Rate limited (429). Too many requests in a short time.")
                                 st.info("Wait a few minutes before trying again.")
                                 
-                        except Exception as req_err:
-                            st.error(f"Request failed: {str(req_err)}")
-                    
-                    # Standard connection logic
-                    response = make_shopify_request("/shop.json")
-                    if response and "shop" in response:
-                        st.session_state.shopify_connected = True
-                        st.success(f"Connected to {response['shop']['name']} successfully!")
-                    else:
-                        st.error("Failed to connect to Shopify. Check the connection details and try again.")
-                except Exception as e:
-                    st.error(f"Connection error: {str(e)}")
+                    except Exception as e:
+                        st.error(f"Connection error: {str(e)}")
             else:
                 st.error("Please provide both shop URL and access token")
     
-    with templates_tab:
-        st.subheader("Templates")
+    # Help guides
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        with st.expander("📘 Connection Guide"):
+            st.markdown(guides["connection_guide"])
+    
+    with col2:
+        with st.expander("🔍 Troubleshooting"):
+            st.markdown(guides["troubleshooting"])
+
+# Templates tab
+elif st.session_state.active_tab == "templates":
+    st.header("Template Management")
+    
+    # Add template guide
+    with st.expander("📝 Template Guide", expanded=len(st.session_state.templates) == 0):
+        st.markdown(guides["template_guide"])
+    
+    # Template creation form
+    with st.form("template_form"):
+        st.subheader("Create New Template")
         
-        # Add template guide
-        with st.expander("📝 Template Guide"):
-            st.markdown(guides["template_guide"])
+        template_name = st.text_input(
+            "Template Name", 
+            key="new_template_name",
+            placeholder="e.g., Basic Product Template"
+        )
         
-        template_name = st.text_input("Template Name", key="new_template_name")
         template_string = st.text_area(
             "Template String",
             placeholder="e.g., {title} - {vendor} product",
@@ -271,7 +397,8 @@ with st.sidebar:
         
         st.caption("Available Variables: {title}, {vendor}, {type}, {tags}")
         
-        if st.button("Add Template"):
+        submitted = st.form_submit_button("Add Template", type="primary")
+        if submitted:
             if template_name and template_string:
                 new_template = {
                     "id": f"template_{len(st.session_state.templates) + 1}",
@@ -279,356 +406,128 @@ with st.sidebar:
                     "template": template_string
                 }
                 st.session_state.templates.append(new_template)
-                st.success(f"Template '{template_name}' added successfully!")
-                # Clear inputs
                 st.session_state.new_template_name = ""
                 st.session_state.new_template_string = ""
+                st.success(f"Template '{template_name}' added successfully!")
+                st.rerun()
             else:
                 st.error("Please provide both template name and string")
-        
-        st.divider()
-        
-        # Display existing templates
-        if st.session_state.templates:
-            for i, template in enumerate(st.session_state.templates):
-                with st.container():
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"**{template['name']}**")
-                        st.text(template['template'])
-                    with col2:
-                        if st.button("Delete", key=f"delete_{template['id']}"):
-                            st.session_state.templates.pop(i)
-                            st.rerun()
-                st.divider()
-        else:
-            st.info("No templates added yet")
-
-# Main content
-tab1, tab2, tab3 = st.tabs(["🏠 Dashboard", "📋 Products", "🖼️ Product Detail"])
-
-# Dashboard tab
-with tab1:
-    st.header("Dashboard")
     
-    # Help guide in the dashboard
-    with st.expander("📖 App User Guide"):
-        st.markdown(guides["app_user_guide"])
+    # Display existing templates
+    st.subheader("Your Templates")
     
-    # Metrics overview
-    if st.session_state.shopify_connected:
-        with st.container():
-            col1, col2, col3 = st.columns(3)
-            
-            # Calculate metrics
-            if st.session_state.products:
-                images_with_alt, total_images, coverage = calculate_coverage_metrics()
+    if st.session_state.templates:
+        # Display templates in a grid
+        template_cols = st.columns(2)
+        for i, template in enumerate(st.session_state.templates):
+            col_idx = i % 2
+            with template_cols[col_idx]:
+                st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
+                st.subheader(template['name'])
+                st.code(template['template'])
                 
-                with col1:
-                    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-                    st.markdown("##### Total Products")
-                    st.markdown(f"<div class='metric-value'>{len(st.session_state.products)}</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-                
+                col1, col2 = st.columns([3, 1])
                 with col2:
-                    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-                    st.markdown("##### Total Images")
-                    st.markdown(f"<div class='metric-value'>{total_images}</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-                
-                with col3:
-                    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-                    st.markdown("##### Alt Text Coverage")
-                    st.markdown(f"<div class='metric-value'>{coverage:.1f}%</div>", unsafe_allow_html=True)
-                    st.markdown("<div class='coverage-bar'>", unsafe_allow_html=True)
-                    st.markdown(f"<div class='coverage-progress' style='width: {coverage}%'></div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-            else:
-                st.info("Connect to Shopify and fetch products to see metrics")
-        
-        # Recent products
-        st.subheader("Recent Products")
-        if st.session_state.recent_products:
-            for product_id in st.session_state.recent_products[-5:]:
-                product = next((p for p in st.session_state.products if p["id"] == product_id), None)
-                if product:
-                    col1, col2, col3 = st.columns([3, 1, 1])
-                    with col1:
-                        st.write(product["title"])
-                    with col2:
-                        image_count = len(product["images"])
-                        alt_count = sum(1 for img in product["images"] if img["alt"])
-                        st.write(f"{alt_count}/{image_count} images with alt text")
-                    with col3:
-                        if st.button("View", key=f"view_{product['id']}"):
-                            st.session_state.current_product = product
-                            st.switch_page("Product Detail")
-        else:
-            st.info("No recent products viewed")
-    
+                    if st.button("Delete", key=f"delete_{template['id']}"):
+                        st.session_state.templates.pop(i)
+                        st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("Please connect to your Shopify store in the sidebar to get started.")
+        st.info("No templates added yet. Create your first template using the form above.")
         
-        # Getting started guide
-        with st.expander("Getting Started Guide"):
-            st.markdown(guides["getting_started"])
+    # Template usage instructions
+    if st.session_state.templates:
+        st.subheader("How to Use Templates")
+        st.markdown("""
+        1. Go to the **Products** tab
+        2. Find a product and view its details
+        3. Select a template from the dropdown for each image
+        4. Click "Apply" to apply the template to the image
+        5. You can also apply a template to all images at once
+        """)
 
 # Products tab
-with tab2:
-    st.header("Products")
-    
-    # Help guide for Products tab
-    with st.expander("ℹ️ Product Management Guide"):
-        st.markdown(guides["product_management"])
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        search = st.text_input("Search Products", value=st.session_state.search_query)
-    with col2:
-        if st.button("Fetch Products"):
-            if st.session_state.shopify_connected:
-                with st.spinner("Fetching products from Shopify..."):
-                    st.session_state.products = fetch_products()
-                    st.success(f"Fetched {len(st.session_state.products)} products")
-            else:
-                st.error("Please connect to Shopify first")
-    
-    # Update search query in session state
-    st.session_state.search_query = search
-    
-    # Filter products based on search query
-    filtered_products = st.session_state.products
-    if search:
-        filtered_products = [p for p in st.session_state.products if search.lower() in p["title"].lower()]
-    
-    # Display products table
-    if filtered_products:
-        product_data = []
-        for product in filtered_products:
-            total_images = len(product["images"])
-            images_with_alt = sum(1 for img in product["images"] if img["alt"])
-            coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
-            
-            product_data.append({
-                "ID": product["id"],
-                "Title": product["title"],
-                "Vendor": product["vendor"],
-                "Type": product["type"],
-                "Images": f"{images_with_alt}/{total_images}",
-                "Coverage": f"{coverage:.1f}%",
-                "Action": product["id"]
-            })
-        
-        df = pd.DataFrame(product_data)
-        
-        # Custom component for clickable view buttons in the table
-        def make_clickable(product_id):
-            return f'<a href="#" onclick="handleProductClick(\'{product_id}\')">View</a>'
-        
-        # Use custom JavaScript to handle the button click
-        st.markdown("""
-        <script>
-        function handleProductClick(productId) {
-            // Pass the product ID to Streamlit
-            const data = {
-                product_id: productId
-            };
-            window.parent.postMessage({
-                type: "streamlit:setComponentValue",
-                value: data
-            }, "*");
-        }
-        </script>
-        """, unsafe_allow_html=True)
-        
-        # Display the product table
-        st.dataframe(
-            df.style.format({
-                "Coverage": lambda x: x
-            }).hide_index(),
-            use_container_width=True
-        )
-        
-        # Handle product selection through a form
-        with st.form("product_selection_form"):
-            product_id = st.selectbox("Select Product to View", 
-                                     options=[p["id"] for p in filtered_products],
-                                     format_func=lambda x: next((p["title"] for p in filtered_products if p["id"] == x), x))
-            
-            submitted = st.form_submit_button("View Product")
-            if submitted:
-                product = next((p for p in filtered_products if p["id"] == product_id), None)
-                if product:
-                    st.session_state.current_product = product
-                    if product_id not in st.session_state.recent_products:
-                        st.session_state.recent_products.append(product_id)
-                    # Limit recent products list to last 10
-                    if len(st.session_state.recent_products) > 10:
-                        st.session_state.recent_products = st.session_state.recent_products[-10:]
+elif st.session_state.active_tab == "products":
+    if not st.session_state.shopify_connected:
+        st.warning("Please connect to Shopify first")
+        if st.button("Go to Connect Tab"):
+            st.session_state.active_tab = "connect"
+            st.rerun()
     else:
-        if st.session_state.products:
-            st.info("No products match your search criteria")
-        else:
-            st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
-
-# Product Detail tab
-with tab3:
-    st.header("Product Detail")
-    
-    # Help guide for Product Detail tab
-    with st.expander("🖼️ Image Alt Text Guide"):
-        st.markdown(guides["alt_text_guide"])
-    
-    if st.session_state.current_product:
-        product = st.session_state.current_product
-        
-        # Product information section
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.subheader(product["title"])
-            st.caption(f"Vendor: {product['vendor']} | Type: {product['type']}")
+        # Products overview tab or product detail view toggle
+        if st.session_state.current_product is None:
+            st.header("Products")
             
-            if product["description"]:
-                with st.expander("Description"):
-                    st.write(product["description"])
-        
-        with col2:
-            # Alt text coverage for this product
-            total_images = len(product["images"])
-            images_with_alt = sum(1 for img in product["images"] if img["alt"])
-            coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
-            
-            st.metric("Alt Text Coverage", f"{coverage:.1f}%", f"{images_with_alt}/{total_images} images")
-        
-        st.divider()
-        
-        # Images section
-        st.subheader("Images")
-        
-        if product["images"]:
-            # Template selection for bulk application
-            col1, col2, col3 = st.columns([2, 1, 1])
+            # Fetch and search toolbar
+            col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
-                bulk_template = st.selectbox(
-                    "Select Template",
-                    options=[t["id"] for t in st.session_state.templates],
-                    format_func=lambda x: next((t["name"] for t in st.session_state.templates if t["id"] == x), x),
-                    key="bulk_template"
-                )
-            
+                search = st.text_input("Search Products", value=st.session_state.search_query)
             with col2:
-                if st.button("Apply to All Images"):
-                    if bulk_template:
-                        for image in product["images"]:
-                            apply_template_to_image(product, image["id"], bulk_template)
-                        st.success("Template applied to all images")
-                    else:
-                        st.error("Please select a template")
-            
+                st.write("")  # Spacing
+                st.write("")  # Spacing
+                if st.button("Reset", key="reset_search"):
+                    st.session_state.search_query = ""
+                    st.rerun()
             with col3:
-                if st.button("Clear All Alt Text"):
-                    for image in product["images"]:
-                        image["alt"] = ""
-                        image["applied_template"] = None
-                        update_image_alt_text(product["id"], image["id"], "")
-                    st.success("All alt text cleared")
+                st.write("")  # Spacing
+                st.write("")  # Spacing
+                if st.button("Fetch Products", type="primary"):
+                    with st.spinner("Fetching products from Shopify..."):
+                        st.session_state.products = fetch_products()
+                        st.success(f"Fetched {len(st.session_state.products)} products")
+                        st.rerun()
             
-            # Display images in a grid
-            st.markdown('<div class="image-grid">', unsafe_allow_html=True)
+            # Update search query in session state
+            st.session_state.search_query = search
             
-            # Create columns for the image grid
-            num_cols = 3
-            cols = st.columns(num_cols)
+            # Filter products based on search query
+            filtered_products = st.session_state.products
+            if search:
+                filtered_products = [p for p in st.session_state.products if search.lower() in p["title"].lower()]
             
-            for i, image in enumerate(product["images"]):
-                col_idx = i % num_cols
+            # Display products in a grid layout
+            if filtered_products:
+                st.write(f"Showing {len(filtered_products)} products")
                 
-                with cols[col_idx]:
-                    st.markdown(f'<div class="image-card">', unsafe_allow_html=True)
-                    
-                    # Display image
-                    try:
-                        response = requests.get(image["src"])
-                        img = Image.open(BytesIO(response.content))
-                        st.image(img, width=200)
-                    except:
-                        st.image("https://via.placeholder.com/200x200?text=Image+Not+Available")
-                    
-                    # Image position
-                    st.caption(f"Position: {i+1}")
-                    
-                    # Template selector for this image
-                    template_options = [("", "None")] + [(t["id"], t["name"]) for t in st.session_state.templates]
-                    selected_template = st.selectbox(
-                        "Template",
-                        options=[t[0] for t in template_options],
-                        format_func=lambda x: next((t[1] for t in template_options if t[0] == x), x),
-                        key=f"template_{image['id']}",
-                        index=0 if not image["applied_template"] else next((i for i, t in enumerate(template_options) if t[0] == image["applied_template"]), 0)
-                    )
-                    
-                    # Preview current alt text
-                    st.markdown('<div class="alt-preview">', unsafe_allow_html=True)
-                    st.write("Alt Text Preview:")
-                    if selected_template:
-                        preview = preview_template(
-                            next((t["template"] for t in st.session_state.templates if t["id"] == selected_template), ""),
-                            product
-                        )
-                        st.text(preview[:100] + ("..." if len(preview) > 100 else ""))
-                    else:
-                        st.text(image["alt"][:100] + ("..." if len(image["alt"]) > 100 else ""))
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Apply template button
-                    if st.button("Apply", key=f"apply_{image['id']}"):
-                        if selected_template:
-                            new_alt = apply_template_to_image(product, image["id"], selected_template)
-                            st.success(f"Applied template: {new_alt[:50]}...")
+                # Create a grid of product cards
+                product_cols = st.columns(3)
+                for i, product in enumerate(filtered_products):
+                    col_idx = i % 3
+                    with product_cols[col_idx]:
+                        st.markdown(f"<div class='product-card'>", unsafe_allow_html=True)
+                        st.markdown(f"**{product['title']}**")
+                        st.caption(f"Vendor: {product['vendor']}")
+                        
+                        # Show product image if available
+                        if product["images"]:
+                            try:
+                                response = requests.get(product["images"][0]["src"])
+                                img = Image.open(BytesIO(response.content))
+                                st.image(img, width=150)
+                            except:
+                                st.image("https://via.placeholder.com/150x150?text=No+Image")
                         else:
-                            # Clear alt text
-                            image["alt"] = ""
-                            image["applied_template"] = None
-                            update_image_alt_text(product["id"], image["id"], "")
-                            st.success("Alt text cleared")
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        else:
-            st.info("This product has no images")
-        
-        # Variants section
-        if product["variants"]:
-            with st.expander("Variants"):
-                variant_data = []
-                for variant in product["variants"]:
-                    variant_data.append({
-                        "ID": variant["id"],
-                        "Title": variant["title"],
-                        "Price": f"${variant['price']}"
-                    })
-                
-                st.dataframe(pd.DataFrame(variant_data).set_index("ID"), use_container_width=True)
-    else:
-        st.info("Select a product from the Products tab to view details")
-
-# Sync changes back to Shopify (could be added in the Products tab)
-if st.session_state.shopify_connected and st.session_state.products:
-    if st.button("Sync Changes to Shopify"):
-        with st.spinner("Syncing changes to Shopify..."):
-            # This demo already updates changes in real-time
-            # In a real implementation, you might batch updates
-            time.sleep(1)  # Simulating sync delay
-            st.success("All changes synced to Shopify successfully!")
-
-# Add FAQ section at the bottom            
-st.markdown("---")
-with st.expander("❓ Frequently Asked Questions"):
-    st.markdown(guides["faq"])
-
-# Footer
-st.markdown("---")
-st.caption("Shopify Alt Text Manager • © 2025")
+                            st.image("https://via.placeholder.com/150x150?text=No+Image")
+                        
+                        # Alt text stats
+                        total_images = len(product["images"])
+                        images_with_alt = sum(1 for img in product["images"] if img["alt"])
+                        coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
+                        
+                        st.write(f"Images: {images_with_alt}/{total_images}")
+                        st.progress(coverage/100)
+                        
+                        if st.button("View Details", key=f"view_{product['id']}"):
+                            st.session_state.current_product = product
+                            if product["id"] not in st.session_state.recent_products:
+                                st.session_state.recent_products.append(product["id"])
+                            # Limit recent products list to last 10
+                            if len(st.session_state.recent_products) > 10:
+                                st.session_state.recent_products = st.session_state.recent_products[-10:]
+                            st.rerun()
+                            
+                        st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                if st.session_state.products:
+                    st.info("No products match your search criteria")
+                else
