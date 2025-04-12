@@ -531,4 +531,4 @@ elif st.session_state.active_tab == "products":
     if st.session_state.products:
         st.info("No products match your search criteria")
     else:
-        st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
+    st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
