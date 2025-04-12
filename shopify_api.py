@@ -2,10 +2,11 @@ import streamlit as st
 import requests
 import json
 from typing import Dict, List, Any
+import traceback
 
 def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) -> Dict:
     """Make a direct request to the Shopify API"""
-    if not st.session_state.shopify_connected:
+    if not hasattr(st.session_state, 'shopify_connected') or not st.session_state.shopify_connected:
         st.error("Shopify not connected")
         return {}
     
@@ -28,12 +29,30 @@ def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) 
     try:
         st.info(f"Making {method} request to: {url}")
         
+        # Add detailed request information (for debugging)
+        request_details = {
+            "url": url,
+            "method": method,
+            "headers": {k: (v if k.lower() != "x-shopify-access-token" else f"{v[:6]}...{v[-4:]}" if len(v) > 10 else "****") for k, v in headers.items()},
+        }
+        if data:
+            request_details["data"] = data
+        st.session_state.last_request = request_details
+        
+        # Make the actual request
         if method == "GET":
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=15)
         elif method == "POST":
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, timeout=15)
         elif method == "PUT":
-            response = requests.put(url, headers=headers, json=data)
+            response = requests.put(url, headers=headers, json=data, timeout=15)
+        
+        # Store response details (for debugging)
+        response_details = {
+            "status_code": response.status_code,
+            "headers": dict(response.headers),
+        }
+        st.session_state.last_response = response_details
         
         # Log the response status code
         st.info(f"Response status code: {response.status_code}")
@@ -44,17 +63,34 @@ def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) 
             try:
                 error_json = response.json()
                 error_detail = json.dumps(error_json, indent=2)
+                response_details["json"] = error_json
             except:
                 if response.text:
                     error_detail = response.text[:500]  # Limit text length
+                    response_details["text"] = response.text[:500]
             
             st.error(f"API Error ({response.status_code}):\n{error_detail}")
             return {}
         
         response.raise_for_status()
-        return response.json()
+        json_response = response.json()
+        response_details["json"] = json_response
+        return json_response
     except requests.exceptions.RequestException as e:
         st.error(f"API Error: {str(e)}")
+        traceback_str = traceback.format_exc()
+        st.code(traceback_str)
+        
+        # Store error details
+        if not hasattr(st.session_state, 'api_errors'):
+            st.session_state.api_errors = []
+        
+        st.session_state.api_errors.append({
+            "error": str(e),
+            "traceback": traceback_str,
+            "request": request_details if 'request_details' in locals() else None
+        })
+        
         return {}
 
 def fetch_products() -> List[Dict]:
