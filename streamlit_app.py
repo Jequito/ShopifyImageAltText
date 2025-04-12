@@ -94,8 +94,6 @@ st.markdown("""
 # Initialize session state variables if they don't exist
 if 'shopify_connected' not in st.session_state:
     st.session_state.shopify_connected = False
-if 'proxy_configured' not in st.session_state:
-    st.session_state.proxy_configured = False
 if 'products' not in st.session_state:
     st.session_state.products = []
 if 'templates' not in st.session_state:
@@ -111,9 +109,9 @@ if 'alt_text_coverage' not in st.session_state:
 
 # Helper functions for Shopify API interactions
 def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) -> Dict:
-    """Make a request to the Shopify API through the configured proxy"""
-    if not st.session_state.proxy_configured or not st.session_state.shopify_connected:
-        st.error("Proxy not configured or Shopify not connected")
+    """Make a direct request to the Shopify API"""
+    if not st.session_state.shopify_connected:
+        st.error("Shopify not connected")
         return {}
     
     headers = {
@@ -121,7 +119,7 @@ def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) 
         "X-Shopify-Access-Token": st.session_state.access_token,
     }
     
-    url = f"{st.session_state.proxy_url}/{st.session_state.shop_url.strip('/')}/admin/api/2023-10{endpoint}"
+    url = f"https://{st.session_state.shop_url.strip('/')}/admin/api/2023-10{endpoint}"
     
     try:
         if method == "GET":
@@ -303,20 +301,12 @@ def preview_template(template: str, product: Dict) -> str:
 with st.sidebar:
     st.title("🏪 Shopify Alt Text Manager")
     
-    # Connection status indicators
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(
-            "### Proxy Status\n" +
-            f"<span class=\"{'status-connected' if st.session_state.proxy_configured else 'status-disconnected'}\">{'Connected' if st.session_state.proxy_configured else 'Disconnected'}</span>",
-            unsafe_allow_html=True
-        )
-    with col2:
-        st.markdown(
-            "### Shopify Status\n" +
-            f"<span class=\"{'status-connected' if st.session_state.shopify_connected else 'status-disconnected'}\">{'Connected' if st.session_state.shopify_connected else 'Disconnected'}</span>",
-            unsafe_allow_html=True
-        )
+    # Connection status indicator
+    st.markdown(
+        "### Shopify Status\n" +
+        f"<span class=\"{'status-connected' if st.session_state.shopify_connected else 'status-disconnected'}\">{'Connected' if st.session_state.shopify_connected else 'Disconnected'}</span>",
+        unsafe_allow_html=True
+    )
     
     st.divider()
     
@@ -324,23 +314,6 @@ with st.sidebar:
     config_tab, templates_tab = st.tabs(["⚙️ Configuration", "📝 Templates"])
     
     with config_tab:
-        st.subheader("Proxy Configuration")
-        proxy_url = st.text_input(
-            "Proxy URL",
-            value=st.session_state.get("proxy_url", ""),
-            placeholder="https://your-proxy-server.com"
-        )
-        
-        if st.button("Configure Proxy"):
-            if proxy_url:
-                st.session_state.proxy_url = proxy_url
-                st.session_state.proxy_configured = True
-                st.success("Proxy configured successfully!")
-            else:
-                st.error("Please enter a valid proxy URL")
-        
-        st.divider()
-        
         st.subheader("Shopify Connection")
         shop_url = st.text_input(
             "Shop URL",
@@ -356,7 +329,7 @@ with st.sidebar:
         )
         
         if st.button("Connect to Shopify"):
-            if shop_url and access_token and st.session_state.proxy_configured:
+            if shop_url and access_token:
                 # Store credentials in session state
                 st.session_state.shop_url = shop_url
                 st.session_state.access_token = access_token
@@ -372,7 +345,7 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Connection error: {str(e)}")
             else:
-                st.error("Please configure the proxy and provide shop URL and access token")
+                st.error("Please provide shop URL and access token")
     
     with templates_tab:
         st.subheader("Templates")
@@ -485,19 +458,15 @@ with tab1:
             st.markdown("""
             ### How to Get Started
             
-            1. **Configure a Proxy Server**
-               * Due to CORS restrictions, a proxy server is needed to make API calls to Shopify
-               * Enter your proxy server URL in the sidebar
-            
-            2. **Connect Your Shopify Store**
+            1. **Connect Your Shopify Store**
                * Get your Shopify Admin API credentials from your Shopify admin
                * Enter your Shop URL and Access Token in the sidebar
             
-            3. **Create Alt Text Templates**
+            2. **Create Alt Text Templates**
                * Switch to the Templates tab in the sidebar
                * Create templates using variables like {title}, {vendor}, etc.
             
-            4. **Manage Product Images**
+            3. **Manage Product Images**
                * Import products from your store
                * Apply templates to product images
                * Review and sync changes back to Shopify
