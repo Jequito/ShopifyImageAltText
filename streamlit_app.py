@@ -192,14 +192,18 @@ with st.sidebar:
                 
                 # Test connection
                 try:
-                    # Enable more verbose debugging
-                    with st.expander("Debug Logs", expanded=True):
-                        st.info("Attempting to connect to Shopify...")
-                        st.code(f"URL: https://{formatted_shop_url}/admin/api/2023-10/shop.json")
-                        st.code(f"Headers: X-Shopify-Access-Token: {access_token[:6]}...{access_token[-4:] if len(access_token) > 10 else '****'}")
-                        
-                        # Try making a request with detailed response logging
+                    # Show debug UI without nesting expanders
+                    st.info("Attempting to connect to Shopify...")
+                    st.code(f"URL: https://{formatted_shop_url}/admin/api/2023-10/shop.json")
+                    token_preview = f"{access_token[:6]}...{access_token[-4:]}" if len(access_token) > 10 else "****"
+                    st.code(f"Headers: X-Shopify-Access-Token: {token_preview}")
+                    
+                    # Debug toggle
+                    show_advanced_debug = st.checkbox("Show Detailed Connection Logs", value=True)
+                    if show_advanced_debug:
+                        st.subheader("Debug Logs")
                         try:
+                            # Make a direct request to test connection
                             raw_response = requests.get(
                                 f"https://{formatted_shop_url}/admin/api/2023-10/shop.json",
                                 headers={
@@ -208,21 +212,36 @@ with st.sidebar:
                                 }
                             )
                             
-                            st.code(f"Response Status: {raw_response.status_code}")
-                            st.code(f"Response Headers: {dict(raw_response.headers)}")
+                            st.write("### Response Status")
+                            st.code(f"Status Code: {raw_response.status_code}")
+                            
+                            st.write("### Response Headers")
+                            st.json(dict(raw_response.headers))
                             
                             # Display response content
+                            st.write("### Response Body")
                             try:
                                 response_json = raw_response.json()
                                 st.json(response_json)
                             except:
                                 st.code(f"Raw Response: {raw_response.text[:1000]}")
+                                
+                            # Status-based troubleshooting hints
+                            if raw_response.status_code == 401:
+                                st.error("⚠️ Authentication failed (401). Your access token is invalid or expired.")
+                                st.info("Generate a new access token in your Shopify admin.")
+                            elif raw_response.status_code == 403:
+                                st.error("⚠️ Permission denied (403). Your access token doesn't have the required permissions.")
+                                st.info("Ensure your token has 'read_products' and 'write_products' scopes.")
+                            elif raw_response.status_code == 404:
+                                st.error("⚠️ Not found (404). The shop URL may be incorrect.")
+                                st.info("Double-check your store URL format.")
+                            elif raw_response.status_code == 429:
+                                st.error("⚠️ Rate limited (429). Too many requests in a short time.")
+                                st.info("Wait a few minutes before trying again.")
+                                
                         except Exception as req_err:
                             st.error(f"Request failed: {str(req_err)}")
-                    
-                    # Run advanced diagnostics
-                    with st.expander("Advanced Diagnostics", expanded=False):
-                        display_debug_info(formatted_shop_url, access_token)
                     
                     # Standard connection logic
                     response = make_shopify_request("/shop.json")
