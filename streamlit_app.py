@@ -456,83 +456,7 @@ elif st.session_state.active_tab == "products":
     else:
         # Products overview tab or product detail view toggle
         if st.session_state.current_product is None:
-            st.header("Products")
-            
-            # Fetch and search toolbar
-            col1, col2, col3 = st.columns([3, 1, 1])
-            with col1:
-                search = st.text_input("Search Products", value=st.session_state.search_query)
-            with col2:
-                st.write("")  # Spacing
-                st.write("")  # Spacing
-                if st.button("Reset", key="reset_search"):
-                    st.session_state.search_query = ""
-                    st.rerun()
-            with col3:
-                st.write("")  # Spacing
-                st.write("")  # Spacing
-                if st.button("Fetch Products", type="primary"):
-                    with st.spinner("Fetching products from Shopify..."):
-                        st.session_state.products = fetch_products()
-                        st.success(f"Fetched {len(st.session_state.products)} products")
-                        st.rerun()
-            
-            # Update search query in session state
-            st.session_state.search_query = search
-            
-            # Filter products based on search query
-            filtered_products = st.session_state.products
-            if search:
-                filtered_products = [p for p in st.session_state.products if search.lower() in p["title"].lower()]
-            
-            # Display products in a grid layout
-            if filtered_products:
-                st.write(f"Showing {len(filtered_products)} products")
-                
-                # Create a grid of product cards
-                product_cols = st.columns(3)
-                for i, product in enumerate(filtered_products):
-                    col_idx = i % 3
-                    with product_cols[col_idx]:
-                        st.markdown(f"<div class='product-card'>", unsafe_allow_html=True)
-                        st.markdown(f"**{product['title']}**")
-                        st.caption(f"Vendor: {product['vendor']}")
-                        
-                        # Show product image if available
-                        if product["images"]:
-                            try:
-                                response = requests.get(product["images"][0]["src"])
-                                img = Image.open(BytesIO(response.content))
-                                st.image(img, width=150)
-                            except:
-                                st.image("https://via.placeholder.com/150x150?text=No+Image")
-                        else:
-                            st.image("https://via.placeholder.com/150x150?text=No+Image")
-                        
-                        # Alt text stats
-                        total_images = len(product["images"])
-                        images_with_alt = sum(1 for img in product["images"] if img["alt"])
-                        coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
-                        
-                        st.write(f"Images: {images_with_alt}/{total_images}")
-                        st.progress(coverage/100)
-                        
-                        if st.button("View Details", key=f"view_{product['id']}"):
-                            st.session_state.current_product = product
-                            if product["id"] not in st.session_state.recent_products:
-                                st.session_state.recent_products.append(product["id"])
-                            # Limit recent products list to last 10
-                            if len(st.session_state.recent_products) > 10:
-                                st.session_state.recent_products = st.session_state.recent_products[-10:]
-                            st.rerun()
-                            
-                        st.markdown("</div>", unsafe_allow_html=True)
-            else:
-                if st.session_state.products:
-                    st.info("No products match your search criteria")
-                else:
-                    st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
-# 1. Fix for blank Products tab when viewing details
+            # 1. Fix for blank Products tab when viewing details
 
 # Find this code section in your Products tab:
 if st.session_state.current_product is None:
@@ -979,3 +903,79 @@ with fetch_col2:
 - `{store}` - Your store name
 - `{sku}` - Product SKU codes (if available)
 - `{color}` - Detected color from product title
+            st.header("Products")
+            
+            # Fetch and search toolbar
+            col1, col2, col3 = st.columns([3, 1, 1])
+            with col1:
+                search = st.text_input("Search Products", value=st.session_state.search_query)
+            with col2:
+                st.write("")  # Spacing
+                st.write("")  # Spacing
+                if st.button("Reset", key="reset_search"):
+                    st.session_state.search_query = ""
+                    st.rerun()
+            with col3:
+                st.write("")  # Spacing
+                st.write("")  # Spacing
+                if st.button("Fetch Products", type="primary"):
+                    with st.spinner("Fetching products from Shopify..."):
+                        st.session_state.products = fetch_products()
+                        st.success(f"Fetched {len(st.session_state.products)} products")
+                        st.rerun()
+            
+            # Update search query in session state
+            st.session_state.search_query = search
+            
+            # Filter products based on search query
+            filtered_products = st.session_state.products
+            if search:
+                filtered_products = [p for p in st.session_state.products if search.lower() in p["title"].lower()]
+            
+            # Display products in a grid layout
+            if filtered_products:
+                st.write(f"Showing {len(filtered_products)} products")
+                
+                # Create a grid of product cards
+                product_cols = st.columns(3)
+                for i, product in enumerate(filtered_products):
+                    col_idx = i % 3
+                    with product_cols[col_idx]:
+                        st.markdown(f"<div class='product-card'>", unsafe_allow_html=True)
+                        st.markdown(f"**{product['title']}**")
+                        st.caption(f"Vendor: {product['vendor']}")
+                        
+                        # Show product image if available
+                        if product["images"]:
+                            try:
+                                response = requests.get(product["images"][0]["src"])
+                                img = Image.open(BytesIO(response.content))
+                                st.image(img, width=150)
+                            except:
+                                st.image("https://via.placeholder.com/150x150?text=No+Image")
+                        else:
+                            st.image("https://via.placeholder.com/150x150?text=No+Image")
+                        
+                        # Alt text stats
+                        total_images = len(product["images"])
+                        images_with_alt = sum(1 for img in product["images"] if img["alt"])
+                        coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
+                        
+                        st.write(f"Images: {images_with_alt}/{total_images}")
+                        st.progress(coverage/100)
+                        
+                        if st.button("View Details", key=f"view_{product['id']}"):
+                            st.session_state.current_product = product
+                            if product["id"] not in st.session_state.recent_products:
+                                st.session_state.recent_products.append(product["id"])
+                            # Limit recent products list to last 10
+                            if len(st.session_state.recent_products) > 10:
+                                st.session_state.recent_products = st.session_state.recent_products[-10:]
+                            st.rerun()
+                            
+                        st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                if st.session_state.products:
+                    st.info("No products match your search criteria")
+                else:
+                    st.info("No products fetched yet. Click 'Fetch Products' to import products from your Shopify store.")
