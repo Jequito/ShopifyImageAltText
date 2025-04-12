@@ -13,6 +13,10 @@ import re
 # Load environment variables if .env file exists
 load_dotenv()
 
+from guides import load_guides
+from shopify_api import make_shopify_request, fetch_products, update_image_alt_text
+from enhanced_debug_tools import display_debug_info
+
 # Set page configuration
 st.set_page_config(
     page_title="Shopify Alt Text Manager",
@@ -183,6 +187,13 @@ def calculate_coverage_metrics() -> Tuple[int, int, float]:
     
     coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
     return images_with_alt, total_images, coverage
+
+def fetch_selected_products(selected_ids=None):
+    """Local wrapper for product fetching"""
+    products = fetch_products()
+    if selected_ids:
+        return [p for p in products if p["id"] in selected_ids]
+    return products
 
 # App header
 st.title("🏪 Shopify Alt Text Manager")
