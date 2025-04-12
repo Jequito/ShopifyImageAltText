@@ -13,6 +13,7 @@ import re
 # Import guides and helper modules
 from guides import load_guides
 from shopify_api import make_shopify_request, fetch_products, update_image_alt_text
+from enhanced_debug_tools import display_debug_info
 
 # Load environment variables if .env file exists
 load_dotenv()
@@ -218,6 +219,10 @@ with st.sidebar:
                                 st.code(f"Raw Response: {raw_response.text[:1000]}")
                         except Exception as req_err:
                             st.error(f"Request failed: {str(req_err)}")
+                    
+                    # Run advanced diagnostics
+                    with st.expander("Advanced Diagnostics", expanded=False):
+                        display_debug_info(formatted_shop_url, access_token)
                     
                     # Standard connection logic
                     response = make_shopify_request("/shop.json")
