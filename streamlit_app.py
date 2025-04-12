@@ -26,8 +26,49 @@ st.set_page_config(
 )
 
 # Load CSS styling
-with open("styles.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+try:
+    with open("styles.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    # Default styles if file not found
+    st.markdown("""
+    <style>
+    .status-connected { color: green; font-weight: bold; }
+    .status-disconnected { color: red; font-weight: bold; }
+    .product-card, .template-card, .metric-card { 
+        background-color: #f8f9fa; 
+        border-radius: 10px; 
+        padding: 15px; 
+        margin-bottom: 10px; 
+    }
+    .image-card {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        width: 220px;
+    }
+    .alt-preview {
+        background-color: #f0f0f0;
+        padding: 8px;
+        border-radius: 4px;
+        margin-top: 8px;
+        font-size: 12px;
+        min-height: 40px;
+    }
+    .metric-value { font-size: 24px; font-weight: bold; }
+    .coverage-bar {
+        height: 10px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+    .coverage-progress {
+        height: 10px;
+        background-color: #4CAF50;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Initialize session state variables if they don't exist
 if 'shopify_connected' not in st.session_state:
@@ -497,47 +538,45 @@ elif st.session_state.active_tab == "products":
                 if st.button("Reset", key="reset_search"):
                     st.session_state.search_query = ""
                     st.rerun()
-            with col3:
-                st.write("")  # Spacing
-                st.write("")  # Spacing
-                
-                # Fetch products button with selection options
-                fetch_col1, fetch_col2 = st.columns([3, 1])
-                with fetch_col1:
-                    fetch_option = st.radio(
-                        "Fetch options:", 
-                        ["All Products", "Selected Products"], 
-                        horizontal=True
-                    )
-                
-                with fetch_col2:
-                    if st.button("Fetch Products", type="primary"):
-                        with st.spinner("Fetching products from Shopify..."):
-                            if fetch_option == "All Products":
+            
+            # Fetch products with selection options
+            st.subheader("Fetch Products")
+            fetch_col1, fetch_col2 = st.columns([3, 1])
+            with fetch_col1:
+                fetch_option = st.radio(
+                    "Fetch options:", 
+                    ["All Products", "Selected Products"], 
+                    horizontal=True
+                )
+            
+            with fetch_col2:
+                if st.button("Fetch Products", type="primary"):
+                    with st.spinner("Fetching products from Shopify..."):
+                        if fetch_option == "All Products":
+                            st.session_state.products = fetch_products()
+                            st.success(f"Fetched {len(st.session_state.products)} products")
+                        else:
+                            # If we already have products, show a selection UI
+                            if st.session_state.products:
+                                product_ids = [p["id"] for p in st.session_state.products]
+                                product_titles = [p["title"] for p in st.session_state.products]
+                                selected_indices = st.multiselect(
+                                    "Select products to fetch",
+                                    options=range(len(product_ids)),
+                                    format_func=lambda i: product_titles[i]
+                                )
+                                
+                                if selected_indices:
+                                    selected_ids = [product_ids[i] for i in selected_indices]
+                                    st.session_state.products = fetch_selected_products(selected_ids)
+                                    st.success(f"Fetched {len(st.session_state.products)} selected products")
+                                else:
+                                    st.warning("Please select at least one product")
+                            else:
+                                # If no products loaded yet, fetch all first
                                 st.session_state.products = fetch_products()
                                 st.success(f"Fetched {len(st.session_state.products)} products")
-                            else:
-                                # If we already have products, show a selection UI
-                                if st.session_state.products:
-                                    product_ids = [p["id"] for p in st.session_state.products]
-                                    product_titles = [p["title"] for p in st.session_state.products]
-                                    selected_indices = st.multiselect(
-                                        "Select products to fetch",
-                                        options=range(len(product_ids)),
-                                        format_func=lambda i: product_titles[i]
-                                    )
-                                    
-                                    if selected_indices:
-                                        selected_ids = [product_ids[i] for i in selected_indices]
-                                        st.session_state.products = fetch_selected_products(selected_ids)
-                                        st.success(f"Fetched {len(st.session_state.products)} selected products")
-                                    else:
-                                        st.warning("Please select at least one product")
-                                else:
-                                    # If no products loaded yet, fetch all first
-                                    st.session_state.products = fetch_products()
-                                    st.success(f"Fetched {len(st.session_state.products)} products")
-                            st.rerun()
+                        st.rerun()
             
             # Update search query in session state
             st.session_state.search_query = search
@@ -699,7 +738,7 @@ elif st.session_state.active_tab == "products":
                         else:
                             st.text(image["alt"][:100] + ("..." if len(image["alt"]) > 100 else ""))
                         st.markdown('</div>', unsafe_allow_html=True)
-
+                        
                         # Apply template button
                         if st.button("Apply", key=f"apply_{image['id']}"):
                             if selected_template:
