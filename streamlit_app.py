@@ -956,18 +956,19 @@ elif st.session_state.active_tab == "help":
     st.markdown("---")
     st.caption("Shopify Alt Text Manager v1.0")
     st.caption(f"Running on Streamlit {st.__version__}")
-count = sum(1 for img in product["images"] if img.get("applied_filename_template"))
-                        
-                        st.write(f"Alt Text: {alt_count}/{image_count} ({alt_coverage:.1f}%)")
-                        st.progress(alt_coverage/100)
-                        st.write(f"Filenames: {filename_count}/{image_count}")
-                        
-                        if st.button("View Details", key=f"view_recent_{product['id']}"):
-                            st.session_state.current_product = product
-                            st.session_state.active_tab = "products"
-                            st.rerun()
-                        st.markdown("</div>", unsafe_allow_html=True)
-        else:
+    count = sum(1 for img in product["images"] if img.get("applied_filename_template"))
+
+    st.write(f"Alt Text: {alt_count}/{image_count} ({alt_coverage:.1f}%)")
+    st.progress(alt_coverage / 100)
+    st.write(f"Filenames: {filename_count}/{image_count}")
+
+    if st.button("View Details", key=f"view_recent_{product['id']}"):
+        st.session_state.current_product = product
+        st.session_state.active_tab = "products"
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    else:
             st.info("No recent products viewed")
     
     else:
