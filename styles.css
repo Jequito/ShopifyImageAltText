@@ -1,12 +1,13 @@
 .main {
-    padding: 2rem;
+    padding: 1rem;
 }
 .stTabs [data-baseweb="tab-list"] {
     gap: 2px;
 }
 .stTabs [data-baseweb="tab"] {
-    padding: 10px 16px;
+    padding: 8px 16px;
     border-radius: 4px 4px 0px 0px;
+    font-size: 0.9rem;
 }
 .status-connected {
     color: green;
@@ -31,7 +32,8 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     padding: 10px;
-    width: 220px;
+    width: 100%;
+    margin-bottom: 10px;
 }
 .alt-preview {
     background-color: #f0f0f0;
@@ -46,6 +48,7 @@
     border-radius: 10px;
     padding: 15px;
     text-align: center;
+    height: 100%;
 }
 .metric-value {
     font-size: 24px;
@@ -61,4 +64,46 @@
     height: 10px;
     background-color: #4CAF50;
     border-radius: 5px;
+}
+/* Compact UI Styles */
+.main-nav {
+    margin-bottom: 0.5rem;
+}
+div.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+.block-container {
+    max-width: 1200px;
+}
+h1 {
+    margin-bottom: 0.5rem;
+}
+.stButton button {
+    font-size: 0.9rem;
+}
+.stTextInput input, .stSelectbox select {
+    font-size: 0.9rem;
+}
+.stTab [data-baseweb="tab"] p {
+    font-size: 0.9rem;
+}
+div.stButton > button:first-child {
+    padding: 0.25rem 1rem;
+}
+.filename-field {
+    font-size: 12px;
+    color: #666;
+    margin: 5px 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+/* Streamlit default overrides for compact UI */
+.row-widget.stRadio > div {
+    flex-direction: row;
+    align-items: center;
+}
+.row-widget.stRadio > div > label {
+    margin-bottom: 0;
+    margin-right: 1rem;
 }
