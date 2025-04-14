@@ -1,5 +1,5 @@
 # Help tab
-elif st.session_state.active_tab == "help":
+if st.session_state.active_tab == "help":
     st.header("Help & Documentation")
     
     # Create tabs for different help sections
