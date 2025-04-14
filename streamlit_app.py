@@ -1,6 +1,26 @@
-# Help tab
-if st.session_state.active_tab == "help":
-    st.header("Help & Documentation")
+import streamlit as st
+import requests
+import json
+import pandas as pd
+import time
+from typing import Dict, List, Optional, Tuple, Any
+from PIL import Image
+from io import BytesIO
+import os
+from dotenv import load_dotenv
+import re
+import random
+import string
+
+# Load environment variables if .env file exists
+load_dotenv()
+# Import guides and helper modules
+from guides import load_guides
+from shopify_api import (
+    make_shopify_request, fetch_products, update_image_alt_text, 
+    update_image_filename, generate_unique_filename
+)
+from enhanced_debug_tools import display_debug_info
     
     # Create tabs for different help sections
     help_tabs = st.tabs([
