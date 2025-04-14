@@ -466,7 +466,7 @@ elif st.session_state.active_tab == "products":
         else:
             st.info("No products match your search criteria")
     else:
-        st.info("No products loaded. Click 'Fetch Products' to import products from your Shopify store.")import streamlit as st
+        st.info("No products loaded. Click 'Fetch Products' to import products from your Shopify store.")
 import requests
 import json
 import pandas as pd
