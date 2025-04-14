@@ -26,7 +26,8 @@ def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) 
     url = f"https://{shop_url}/admin/api/2023-10{endpoint}"
     
     try:
-        st.info(f"Making {method} request to: {url}")
+        if st.session_state.get('debug_mode', False):
+            st.info(f"Making {method} request to: {url}")
         
         if method == "GET":
             response = requests.get(url, headers=headers, timeout=15)
@@ -36,7 +37,8 @@ def make_shopify_request(endpoint: str, method: str = "GET", data: Dict = None) 
             response = requests.put(url, headers=headers, json=data, timeout=15)
         
         # Log the response status code
-        st.info(f"Response status code: {response.status_code}")
+        if st.session_state.get('debug_mode', False):
+            st.info(f"Response status code: {response.status_code}")
         
         # Try to get detailed error info if available
         if response.status_code >= 400:
@@ -76,6 +78,8 @@ def fetch_products() -> List[Dict]:
                   id
                   url
                   altText
+                  originalSrc
+                  src
                 }
               }
             }
@@ -108,11 +112,18 @@ def fetch_products() -> List[Dict]:
             if "images" in product and "edges" in product["images"]:
                 for img_edge in product["images"]["edges"]:
                     image_node = img_edge["node"]
+                    
+                    # Extract filename from src
+                    image_src = image_node["src"] or ""
+                    filename = image_src.split("/")[-1].split("?")[0] if image_src else ""
+                    
                     images.append({
                         "id": image_node["id"],
                         "src": image_node["url"],
                         "alt": image_node["altText"] or "",
-                        "applied_template": None
+                        "applied_template": None,
+                        "filename": filename,
+                        "applied_filename_template": None
                     })
             
             # Process variants
@@ -173,6 +184,8 @@ def fetch_selected_products(selected_ids=None) -> List[Dict]:
                       id
                       url
                       altText
+                      originalSrc
+                      src
                     }}
                   }}
                 }}
@@ -208,11 +221,18 @@ def fetch_selected_products(selected_ids=None) -> List[Dict]:
             if "images" in product and "edges" in product["images"]:
                 for img_edge in product["images"]["edges"]:
                     image_node = img_edge["node"]
+                    
+                    # Extract filename from src
+                    image_src = image_node["src"] or ""
+                    filename = image_src.split("/")[-1].split("?")[0] if image_src else ""
+                    
                     images.append({
                         "id": image_node["id"],
                         "src": image_node["url"],
                         "alt": image_node["altText"] or "",
-                        "applied_template": None
+                        "applied_template": None,
+                        "filename": filename,
+                        "applied_filename_template": None
                     })
             
             # Process variants
@@ -263,3 +283,45 @@ def update_image_alt_text(product_id: str, image_id: str, alt_text: str) -> bool
     
     result = make_shopify_request(endpoint, "PUT", data)
     return "image" in result
+
+def update_image_filename(product_id: str, image_id: str, filename: str) -> bool:
+    """Update filename for a specific product image"""
+    # Extract the numeric ID from the GraphQL ID string
+    image_gid = image_id.split("/")[-1]
+    product_gid = product_id.split("/")[-1]
+    
+    # Make sure filename doesn't have spaces or special characters
+    clean_filename = filename.replace(" ", "-").lower()
+    
+    endpoint = f"/products/{product_gid}/images/{image_gid}.json"
+    data = {
+        "image": {
+            "id": image_gid,
+            "filename": clean_filename
+        }
+    }
+    
+    result = make_shopify_request(endpoint, "PUT", data)
+    return "image" in result
+
+def generate_unique_filename(base_filename: str, product_id: str, image_id: str) -> str:
+    """Generate a unique filename to avoid duplicates"""
+    # Extract extension
+    name_parts = base_filename.rsplit('.', 1)
+    if len(name_parts) > 1:
+        name, ext = name_parts
+    else:
+        name = base_filename
+        ext = "jpg"  # Default extension
+    
+    # Clean the name (remove spaces and special characters)
+    clean_name = name.replace(" ", "-").lower()
+    
+    # Add a unique identifier (truncated product ID and image ID)
+    short_product_id = product_id.split('/')[-1][-4:]
+    short_image_id = image_id.split('/')[-1][-4:]
+    
+    # Create unique filename
+    unique_filename = f"{clean_name}-{short_product_id}-{short_image_id}.{ext}"
+    
+    return unique_filename
