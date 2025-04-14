@@ -1,4 +1,472 @@
-import streamlit as st
+# Help tab
+elif st.session_state.active_tab == "help":
+    st.header("Help & Documentation")
+    
+    # Create tabs for different help sections
+    help_tabs = st.tabs([
+        "🔧 App Guide", 
+        "🔌 Connection Help", 
+        "📝 Template Help", 
+        "🖼️ Alt Text Guide", 
+        "❓ FAQ"
+    ])
+    
+    # App Guide tab
+    with help_tabs[0]:
+        st.markdown(guides["app_user_guide"])
+        st.markdown(guides["getting_started"])
+    
+    # Connection Help tab
+    with help_tabs[1]:
+        st.markdown(guides["connection_guide"])
+        st.markdown(guides["troubleshooting"])
+    
+    # Template Help tab
+    with help_tabs[2]:
+        st.markdown(guides["template_guide"])
+    
+    # Alt Text Guide tab
+    with help_tabs[3]:
+        st.markdown(guides["alt_text_guide"])
+    
+    # FAQ tab
+    with help_tabs[4]:
+        st.markdown(guides["faq"])
+    
+    # Contact information
+    st.markdown("---")
+    st.subheader("Need More Help?")
+    st.markdown("""
+    If you're experiencing issues not covered in the documentation, please reach out for support:
+    
+    - Check the [Shopify API documentation](https://shopify.dev/docs/admin-api) for reference
+    - Review the [Streamlit documentation](https://docs.streamlit.io/) for app functionality
+    - Refer to the [Alt Text best practices](https://www.w3.org/WAI/tutorials/images/decision-tree/) from W3C
+    """)
+    
+    # Version information
+    st.markdown("---")
+    st.caption("Shopify Alt Text Manager v1.0")
+    st.caption(f"Running on Streamlit {st.__version__}")# Debug tab
+elif st.session_state.active_tab == "debug":
+    st.header("Debug Mode")
+    
+    st.warning("⚠️ This section is for troubleshooting purposes only.")
+    
+    if not st.session_state.shopify_connected:
+        st.error("You need to connect to Shopify first to use the debugging tools.")
+    else:
+        st.info("Use these tools to diagnose connection issues with your Shopify store.")
+        
+        # Debug options
+        st.subheader("Connection Details")
+        st.write(f"**Store URL:** {st.session_state.shop_url}")
+        st.write(f"**Connection Status:** {'Connected' if st.session_state.shopify_connected else 'Disconnected'}")
+        if hasattr(st.session_state, 'shop_name') and st.session_state.shop_name:
+            st.write(f"**Store Name:** {st.session_state.shop_name}")
+        
+        # Debug tools expander
+        with st.expander("Run Comprehensive Diagnostics", expanded=not st.session_state.compact_mode):
+            if st.button("Start Diagnostic Test", type="primary", use_container_width=True):
+                if st.session_state.shopify_connected and hasattr(st.session_state, 'shop_url') and hasattr(st.session_state, 'access_token'):
+                    with st.spinner("Running diagnostics..."):
+                        # Use the enhanced_debug_tools module's function
+                        display_debug_info(st.session_state.shop_url, st.session_state.access_token)
+                else:
+                    st.error("Cannot run diagnostics. Please ensure you are connected to Shopify.")
+        
+        # Test individual API endpoints
+        st.subheader("Test API Endpoints")
+        
+        test_endpoints = {
+            "Shop Information": "/shop.json",
+            "Product Count": "/products/count.json",
+            "First 5 Products": "/products.json?limit=5",
+            "First 5 Collections": "/collections.json?limit=5"
+        }
+        
+        selected_endpoint = st.selectbox(
+            "Select API endpoint to test", 
+            options=list(test_endpoints.keys())
+        )
+        
+        if st.button("Test Endpoint", key="test_endpoint_btn"):
+            with st.spinner(f"Testing endpoint {test_endpoints[selected_endpoint]}..."):
+                result = make_shopify_request(test_endpoints[selected_endpoint])
+                if result:
+                    st.success("✅ API call successful")
+                    st.json(result)
+                else:
+                    st.error("❌ API call failed")
+        
+        # Runtime information
+        st.subheader("Runtime Information")
+        
+        info_cols = st.columns(2)
+        
+        with info_cols[0]:
+            st.write("**Session State Variables:**")
+            session_info = {k: v for k, v in st.session_state.items() if k not in ['access_token', 'products', 'current_product']}
+            st.write(session_info)
+        
+        with info_cols[1]:
+            st.write("**Version Information:**")
+            st.write(f"- Streamlit: {st.__version__}")
+            st.write("- Requests: " + requests.__version__)
+            st.write("- Pandas: " + pd.__version__)
+            
+        # Toggle detailed debug mode
+        st.session_state.debug_mode = st.checkbox("Enable detailed debug logging", value=st.session_state.debug_mode)
+        
+        # Clear session state option
+        st.subheader("Reset Application")
+        clear_cols = st.columns([3, 1])
+        
+        with clear_cols[0]:
+            st.warning("This will reset all session data including your connection, templates, and product cache.")
+        
+        with clear_cols[1]:
+            if st.button("Reset App", type="primary", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.success("Application has been reset. Refreshing...")
+                st.rerun()    # Product detail view
+    if st.session_state.current_product:
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.subheader(f"Product Details: {st.session_state.current_product['title']}")
+        
+        # Product info
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.write(f"**Vendor:** {st.session_state.current_product['vendor']}")
+            st.write(f"**Type:** {st.session_state.current_product['type']}")
+            if st.session_state.current_product.get('tags'):
+                st.write(f"**Tags:** {', '.join(st.session_state.current_product['tags'])}")
+        
+        with col2:
+            if st.button("Back to Products", use_container_width=True):
+                st.session_state.current_product = None
+                st.rerun()
+        
+        # Bulk templates in tabs
+        st.subheader("Bulk Apply Templates")
+        template_bulk_tabs = st.tabs(["Alt Text Templates", "Filename Templates"])
+        
+        # Alt Text Template Bulk Tab
+        with template_bulk_tabs[0]:
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                if st.session_state.templates:
+                    template_options = {t["id"]: t["name"] for t in st.session_state.templates}
+                    selected_template = st.selectbox(
+                        "Select Alt Text Template",
+                        options=list(template_options.keys()),
+                        format_func=lambda x: template_options[x],
+                        key="bulk_alt_template"
+                    )
+                    
+                    # Preview selected template
+                    template = next((t for t in st.session_state.templates if t["id"] == selected_template), None)
+                    if template:
+                        preview = preview_template(template["template"], st.session_state.current_product)
+                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
+                        st.write(f"Preview: {preview}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.info("No alt text templates available. Create templates in the Templates tab.")
+                    selected_template = None
+            
+            with col2:
+                if selected_template and st.button("Apply to All Images", use_container_width=True, type="primary"):
+                    # Apply template to all images
+                    product = st.session_state.current_product
+                    for image in product["images"]:
+                        apply_template_to_image(product, image["id"], selected_template)
+                    
+                    st.success("✅ Alt text template applied to all images")
+                    st.rerun()
+        
+        # Filename Template Bulk Tab
+        with template_bulk_tabs[1]:
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                if st.session_state.filename_templates:
+                    filename_template_options = {t["id"]: t["name"] for t in st.session_state.filename_templates}
+                    selected_filename_template = st.selectbox(
+                        "Select Filename Template",
+                        options=list(filename_template_options.keys()),
+                        format_func=lambda x: filename_template_options[x],
+                        key="bulk_filename_template"
+                    )
+                    
+                    # Preview selected template
+                    template = next((t for t in st.session_state.filename_templates if t["id"] == selected_filename_template), None)
+                    if template:
+                        preview = preview_template(template["template"], st.session_state.current_product)
+                        if "." not in preview:
+                            preview += ".jpg"
+                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
+                        st.write(f"Preview: {preview}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.info("No filename templates available. Create templates in the Templates tab.")
+                    selected_filename_template = None
+            
+            with col2:
+                if selected_filename_template and st.button("Apply to All Images", use_container_width=True, type="primary", key="bulk_apply_filename"):
+                    # Apply template to all images
+                    product = st.session_state.current_product
+                    for image in product["images"]:
+                        apply_filename_template_to_image(product, image["id"], selected_filename_template)
+                    
+                    st.success("✅ Filename template applied to all images")
+                    st.rerun()
+        
+        # Display images with alt text and filename editing
+        st.subheader("Product Images")
+        
+        # Create a grid of images
+        image_grid = st.container()
+        
+        with image_grid:
+            # Create columns for the grid - make it more compact with 3 columns
+            cols = st.columns(3)
+            
+            for i, image in enumerate(st.session_state.current_product["images"]):
+                col_idx = i % 3
+                
+                with cols[col_idx]:
+                    st.markdown(f"<div class='image-card'>", unsafe_allow_html=True)
+                    
+                    # Display image
+                    try:
+                        response = requests.get(image["src"])
+                        img = Image.open(BytesIO(response.content))
+                        st.image(img, width=200)
+                    except:
+                        st.image("https://via.placeholder.com/200x200?text=No+Image")
+                    
+                    # Use tabs for Alt Text and Filename settings
+                    image_tabs = st.tabs(["Alt Text", "Filename"])
+                    
+                    # Alt Text Tab
+                    with image_tabs[0]:
+                        # Current alt text
+                        st.text_area(
+                            f"Alt Text #{i+1}",
+                            value=image.get("alt", ""),
+                            key=f"alt_{image['id']}",
+                            height=80
+                        )
+                        
+                        # Alt Text Template selector
+                        if st.session_state.templates:
+                            template_options = {t["id"]: t["name"] for t in st.session_state.templates}
+                            template_options[""] = "Select a template..."
+                            
+                            selected = st.selectbox(
+                                "Apply Template",
+                                options=list(template_options.keys()),
+                                format_func=lambda x: template_options[x],
+                                key=f"template_{image['id']}",
+                                index=0
+                            )
+                            
+                            # Action buttons
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if selected:
+                                    if st.button("Apply", key=f"apply_{image['id']}"):
+                                        new_alt_text = apply_template_to_image(
+                                            st.session_state.current_product,
+                                            image["id"],
+                                            selected
+                                        )
+                                        st.success(f"Template applied")
+                                        st.rerun()
+                            
+                            with col2:
+                                if st.button("Clear", key=f"clear_{image['id']}"):
+                                    # Clear alt text
+                                    for img in st.session_state.current_product["images"]:
+                                        if img["id"] == image["id"]:
+                                            img["alt"] = ""
+                                            img["applied_template"] = None
+                                            
+                                            # Update in Shopify
+                                            update_image_alt_text(st.session_state.current_product["id"], image["id"], "")
+                                            break
+                                    
+                                    st.success("Alt text cleared")
+                                    st.rerun()
+                    
+                    # Filename Tab
+                    with image_tabs[1]:
+                        # Display current filename
+                        st.markdown(f"<div class='filename-field'>Current: {image.get('filename', 'No filename')}</div>", unsafe_allow_html=True)
+                        
+                        # Filename Template selector
+                        if st.session_state.filename_templates:
+                            filename_template_options = {t["id"]: t["name"] for t in st.session_state.filename_templates}
+                            filename_template_options[""] = "Select a template..."
+                            
+                            selected_filename = st.selectbox(
+                                "Apply Filename Template",
+                                options=list(filename_template_options.keys()),
+                                format_func=lambda x: filename_template_options[x],
+                                key=f"filename_template_{image['id']}",
+                                index=0
+                            )
+                            
+                            # Action buttons
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if selected_filename:
+                                    if st.button("Apply", key=f"apply_filename_{image['id']}"):
+                                        new_filename = apply_filename_template_to_image(
+                                            st.session_state.current_product,
+                                            image["id"],
+                                            selected_filename
+                                        )
+                                        st.success(f"Filename updated")
+                                        st.rerun()
+                            
+                            with col2:
+                                if st.button("Clear", key=f"clear_filename_{image['id']}"):
+                                    # We can't really "clear" a filename back to default in Shopify
+                                    # But we can mark it as not having an applied template
+                                    for img in st.session_state.current_product["images"]:
+                                        if img["id"] == image["id"]:
+                                            img["applied_filename_template"] = None
+                                            break
+                                    
+                                    st.success("Filename template cleared")
+                                    st.rerun()
+                        else:
+                            st.info("Create filename templates in the Templates tab")
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)# Products tab
+elif st.session_state.active_tab == "products":
+    st.header("Products Management")
+    
+    # Products guide
+    with st.expander("📋 Product Management Guide", expanded=len(st.session_state.products) == 0 and not st.session_state.compact_mode):
+        st.markdown(guides["product_management"])
+    
+    # Product fetch options
+    st.subheader("Fetch Products")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        if st.button("Fetch All Products", key="fetch_all", type="primary", use_container_width=True):
+            with st.spinner("Fetching products from Shopify..."):
+                try:
+                    products = fetch_products()
+                    if products:
+                        st.session_state.products = products
+                        st.success(f"✅ Successfully imported {len(products)} products")
+                        st.rerun()
+                    else:
+                        st.error("❌ No products retrieved. Check connection and permissions.")
+                except Exception as e:
+                    st.error(f"Error fetching products: {str(e)}")
+    
+    with col2:
+        limit = st.number_input("Max Products", value=st.session_state.fetch_limit, min_value=1, max_value=250, step=10)
+        if limit != st.session_state.fetch_limit:
+            st.session_state.fetch_limit = limit
+    
+    # Display products if available
+    if st.session_state.products:
+        st.subheader(f"Products ({len(st.session_state.products)})")
+        
+        # Search box
+        search_query = st.text_input("Search Products", value=st.session_state.search_query)
+        st.session_state.search_query = search_query
+        
+        # Filter products by search query
+        filtered_products = st.session_state.products
+        if search_query:
+            filtered_products = [p for p in st.session_state.products if search_query.lower() in p["title"].lower()]
+        
+        # Create a dataframe for display
+        product_data = []
+        for product in filtered_products:
+            # Calculate alt text coverage
+            total_images = len(product["images"])
+            images_with_alt = sum(1 for img in product["images"] if img.get("alt"))
+            images_with_filename = sum(1 for img in product["images"] if img.get("applied_filename_template"))
+            alt_coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
+            filename_coverage = (images_with_filename / total_images * 100) if total_images > 0 else 0
+            
+            product_data.append({
+                "ID": product["id"],
+                "Product": product["title"],
+                "Images": f"{total_images}",
+                "Alt Coverage": f"{alt_coverage:.1f}%",
+                "Filename Coverage": f"{filename_coverage:.1f}%",
+                "Vendor": product["vendor"]
+            })
+        
+        if product_data:
+            # Convert to dataframe
+            df = pd.DataFrame(product_data)
+            
+            # Show product table with a view details button - compact layout
+            # Add table header
+            header_cols = st.columns([4, 1, 1.5, 1.5, 1.5, 1.5])
+            with header_cols[0]:
+                st.markdown("**Product**")
+            with header_cols[1]:
+                st.markdown("**Images**")
+            with header_cols[2]:
+                st.markdown("**Alt Text**")
+            with header_cols[3]:
+                st.markdown("**Filename**")
+            with header_cols[4]:
+                st.markdown("**Vendor**")
+            with header_cols[5]:
+                st.markdown("**Actions**")
+            
+            st.markdown("<hr style='margin: 5px 0'>", unsafe_allow_html=True)
+            
+            # Show product rows
+            for i, row in df.iterrows():
+                cols = st.columns([4, 1, 1.5, 1.5, 1.5, 1.5])
+                
+                with cols[0]:
+                    st.write(row["Product"])
+                with cols[1]:
+                    st.write(row["Images"])
+                with cols[2]:
+                    st.write(row["Alt Coverage"])
+                with cols[3]:
+                    st.write(row["Filename Coverage"])
+                with cols[4]:
+                    st.write(row["Vendor"])
+                with cols[5]:
+                    if st.button("View", key=f"view_{row['ID']}", use_container_width=True):
+                        product = next((p for p in st.session_state.products if p["id"] == row["ID"]), None)
+                        if product:
+                            st.session_state.current_product = product
+                            
+                            # Add to recent products list
+                            if row["ID"] in st.session_state.recent_products:
+                                st.session_state.recent_products.remove(row["ID"])
+                            st.session_state.recent_products.append(row["ID"])
+                            
+                            # Show product details
+                            st.rerun()
+                
+                st.markdown("<hr style='margin: 5px 0'>", unsafe_allow_html=True)
+        else:
+            st.info("No products match your search criteria")
+    else:
+        st.info("No products loaded. Click 'Fetch Products' to import products from your Shopify store.")import streamlit as st
 import requests
 import json
 import pandas as pd
@@ -369,142 +837,6 @@ if st.session_state.active_tab == "dashboard":
                         st.markdown("##### Total Products")
                         st.markdown(f"<div class='metric-value'>{len(st.session_state.products)}</div>", unsafe_allow_html=True)
                         st.markdown("</div>", unsafe_allow_html=True)
-
-# Debug tab
-elif st.session_state.active_tab == "debug":
-    st.header("Debug Mode")
-    
-    st.warning("⚠️ This section is for troubleshooting purposes only.")
-    
-    if not st.session_state.shopify_connected:
-        st.error("You need to connect to Shopify first to use the debugging tools.")
-    else:
-        st.info("Use these tools to diagnose connection issues with your Shopify store.")
-        
-        # Debug options
-        st.subheader("Connection Details")
-        st.write(f"**Store URL:** {st.session_state.shop_url}")
-        st.write(f"**Connection Status:** {'Connected' if st.session_state.shopify_connected else 'Disconnected'}")
-        if hasattr(st.session_state, 'shop_name') and st.session_state.shop_name:
-            st.write(f"**Store Name:** {st.session_state.shop_name}")
-        
-        # Debug tools expander
-        with st.expander("Run Comprehensive Diagnostics", expanded=not st.session_state.compact_mode):
-            if st.button("Start Diagnostic Test", type="primary", use_container_width=True):
-                if st.session_state.shopify_connected and hasattr(st.session_state, 'shop_url') and hasattr(st.session_state, 'access_token'):
-                    with st.spinner("Running diagnostics..."):
-                        # Use the enhanced_debug_tools module's function
-                        display_debug_info(st.session_state.shop_url, st.session_state.access_token)
-                else:
-                    st.error("Cannot run diagnostics. Please ensure you are connected to Shopify.")
-        
-        # Test individual API endpoints
-        st.subheader("Test API Endpoints")
-        
-        test_endpoints = {
-            "Shop Information": "/shop.json",
-            "Product Count": "/products/count.json",
-            "First 5 Products": "/products.json?limit=5",
-            "First 5 Collections": "/collections.json?limit=5"
-        }
-        
-        selected_endpoint = st.selectbox(
-            "Select API endpoint to test", 
-            options=list(test_endpoints.keys())
-        )
-        
-        if st.button("Test Endpoint", key="test_endpoint_btn"):
-            with st.spinner(f"Testing endpoint {test_endpoints[selected_endpoint]}..."):
-                result = make_shopify_request(test_endpoints[selected_endpoint])
-                if result:
-                    st.success("✅ API call successful")
-                    st.json(result)
-                else:
-                    st.error("❌ API call failed")
-        
-        # Runtime information
-        st.subheader("Runtime Information")
-        
-        info_cols = st.columns(2)
-        
-        with info_cols[0]:
-            st.write("**Session State Variables:**")
-            session_info = {k: v for k, v in st.session_state.items() if k not in ['access_token', 'products', 'current_product']}
-            st.write(session_info)
-        
-        with info_cols[1]:
-            st.write("**Version Information:**")
-            st.write(f"- Streamlit: {st.__version__}")
-            st.write("- Requests: " + requests.__version__)
-            st.write("- Pandas: " + pd.__version__)
-            
-        # Toggle detailed debug mode
-        st.session_state.debug_mode = st.checkbox("Enable detailed debug logging", value=st.session_state.debug_mode)
-        
-        # Clear session state option
-        st.subheader("Reset Application")
-        clear_cols = st.columns([3, 1])
-        
-        with clear_cols[0]:
-            st.warning("This will reset all session data including your connection, templates, and product cache.")
-        
-        with clear_cols[1]:
-            if st.button("Reset App", type="primary", use_container_width=True):
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.success("Application has been reset. Refreshing...")
-                st.rerun()
-
-# Help tab
-elif st.session_state.active_tab == "help":
-    st.header("Help & Documentation")
-    
-    # Create tabs for different help sections
-    help_tabs = st.tabs([
-        "🔧 App Guide", 
-        "🔌 Connection Help", 
-        "📝 Template Help", 
-        "🖼️ Alt Text Guide", 
-        "❓ FAQ"
-    ])
-    
-    # App Guide tab
-    with help_tabs[0]:
-        st.markdown(guides["app_user_guide"])
-        st.markdown(guides["getting_started"])
-    
-    # Connection Help tab
-    with help_tabs[1]:
-        st.markdown(guides["connection_guide"])
-        st.markdown(guides["troubleshooting"])
-    
-    # Template Help tab
-    with help_tabs[2]:
-        st.markdown(guides["template_guide"])
-    
-    # Alt Text Guide tab
-    with help_tabs[3]:
-        st.markdown(guides["alt_text_guide"])
-    
-    # FAQ tab
-    with help_tabs[4]:
-        st.markdown(guides["faq"])
-    
-    # Contact information
-    st.markdown("---")
-    st.subheader("Need More Help?")
-    st.markdown("""
-    If you're experiencing issues not covered in the documentation, please reach out for support:
-    
-    - Check the [Shopify API documentation](https://shopify.dev/docs/admin-api) for reference
-    - Review the [Streamlit documentation](https://docs.streamlit.io/) for app functionality
-    - Refer to the [Alt Text best practices](https://www.w3.org/WAI/tutorials/images/decision-tree/) from W3C
-    """)
-    
-    # Version information
-    st.markdown("---")
-    st.caption("Shopify Alt Text Manager v1.0")
-    st.caption(f"Running on Streamlit {st.__version__}")
                     
                     with metric_cols[1]:
                         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
@@ -769,377 +1101,6 @@ elif st.session_state.active_tab == "templates":
                 else:
                     st.error("Please provide both template name and string")
         
-        # Display existing filename templates
-        st.subheader("Your Filename Templates")
-        
-        if st.session_state.filename_templates:
-            # Display templates in a grid
-            template_cols = st.columns(2)
-            for i, template in enumerate(st.session_state.filename_templates):
-                col_idx = i % 2
-                with template_cols[col_idx]:
-                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
-                    st.subheader(template['name'])
-                    st.code(template['template'])
-                    
-                    # Preview for first product if available
-                    if st.session_state.products:
-                        preview = preview_template(template["template"], st.session_state.products[0])
-                        if "." not in preview:
-                            preview += ".jpg"
-                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
-                        st.write(f"Preview: {preview}")
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns([3, 1])
-                    with col2:
-                        if st.button("Delete", key=f"delete_filename_{template['id']}"):
-                            st.session_state.filename_templates.pop(i)
-                            st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.info("No filename templates created yet. Use the form above to create your first template.")
-
-# Products tab
-elif st.session_state.active_tab == "products":
-    st.header("Products Management")
-    
-    # Products guide
-    with st.expander("📋 Product Management Guide", expanded=len(st.session_state.products) == 0 and not st.session_state.compact_mode):
-        st.markdown(guides["product_management"])
-    
-    # Product fetch options
-    st.subheader("Fetch Products")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        if st.button("Fetch All Products", key="fetch_all", type="primary", use_container_width=True):
-            with st.spinner("Fetching products from Shopify..."):
-                try:
-                    products = fetch_products()
-                    if products:
-                        st.session_state.products = products
-                        st.success(f"✅ Successfully imported {len(products)} products")
-                        st.rerun()
-                    else:
-                        st.error("❌ No products retrieved. Check connection and permissions.")
-                except Exception as e:
-                    st.error(f"Error fetching products: {str(e)}")
-    
-    with col2:
-        limit = st.number_input("Max Products", value=st.session_state.fetch_limit, min_value=1, max_value=250, step=10)
-        if limit != st.session_state.fetch_limit:
-            st.session_state.fetch_limit = limit
-    
-    # Display products if available
-    if st.session_state.products:
-        st.subheader(f"Products ({len(st.session_state.products)})")
-        
-        # Search box
-        search_query = st.text_input("Search Products", value=st.session_state.search_query)
-        st.session_state.search_query = search_query
-        
-        # Filter products by search query
-        filtered_products = st.session_state.products
-        if search_query:
-            filtered_products = [p for p in st.session_state.products if search_query.lower() in p["title"].lower()]
-        
-        # Create a dataframe for display
-        product_data = []
-        for product in filtered_products:
-            # Calculate alt text coverage
-            total_images = len(product["images"])
-            images_with_alt = sum(1 for img in product["images"] if img.get("alt"))
-            images_with_filename = sum(1 for img in product["images"] if img.get("applied_filename_template"))
-            alt_coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
-            filename_coverage = (images_with_filename / total_images * 100) if total_images > 0 else 0
-            
-            product_data.append({
-                "ID": product["id"],
-                "Product": product["title"],
-                "Images": f"{total_images}",
-                "Alt Coverage": f"{alt_coverage:.1f}%",
-                "Filename Coverage": f"{filename_coverage:.1f}%",
-                "Vendor": product["vendor"]
-            })
-        
-        if product_data:
-            # Convert to dataframe
-            df = pd.DataFrame(product_data)
-            
-            # Show product table with a view details button - compact layout
-            # Add table header
-            header_cols = st.columns([4, 1, 1.5, 1.5, 1.5, 1.5])
-            with header_cols[0]:
-                st.markdown("**Product**")
-            with header_cols[1]:
-                st.markdown("**Images**")
-            with header_cols[2]:
-                st.markdown("**Alt Text**")
-            with header_cols[3]:
-                st.markdown("**Filename**")
-            with header_cols[4]:
-                st.markdown("**Vendor**")
-            with header_cols[5]:
-                st.markdown("**Actions**")
-            
-            st.markdown("<hr style='margin: 5px 0'>", unsafe_allow_html=True)
-            
-            # Show product rows
-            for i, row in df.iterrows():
-                cols = st.columns([4, 1, 1.5, 1.5, 1.5, 1.5])
-                
-                with cols[0]:
-                    st.write(row["Product"])
-                with cols[1]:
-                    st.write(row["Images"])
-                with cols[2]:
-                    st.write(row["Alt Coverage"])
-                with cols[3]:
-                    st.write(row["Filename Coverage"])
-                with cols[4]:
-                    st.write(row["Vendor"])
-                with cols[5]:
-                    if st.button("View", key=f"view_{row['ID']}", use_container_width=True):
-                        product = next((p for p in st.session_state.products if p["id"] == row["ID"]), None)
-                        if product:
-                            st.session_state.current_product = product
-                            
-                            # Add to recent products list
-                            if row["ID"] in st.session_state.recent_products:
-                                st.session_state.recent_products.remove(row["ID"])
-                            st.session_state.recent_products.append(row["ID"])
-                            
-                            # Show product details
-                            st.rerun()
-                
-                st.markdown("<hr style='margin: 5px 0'>", unsafe_allow_html=True)
-        else:
-            st.info("No products match your search criteria")
-    else:
-        st.info("No products loaded. Click 'Fetch Products' to import products from your Shopify store.")
-    
-    # Product detail view
-    if st.session_state.current_product:
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.subheader(f"Product Details: {st.session_state.current_product['title']}")
-        
-        # Product info
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            st.write(f"**Vendor:** {st.session_state.current_product['vendor']}")
-            st.write(f"**Type:** {st.session_state.current_product['type']}")
-            if st.session_state.current_product.get('tags'):
-                st.write(f"**Tags:** {', '.join(st.session_state.current_product['tags'])}")
-        
-        with col2:
-            if st.button("Back to Products", use_container_width=True):
-                st.session_state.current_product = None
-                st.rerun()
-        
-        # Bulk templates in tabs
-        st.subheader("Bulk Apply Templates")
-        template_bulk_tabs = st.tabs(["Alt Text Templates", "Filename Templates"])
-        
-        # Alt Text Template Bulk Tab
-        with template_bulk_tabs[0]:
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                if st.session_state.templates:
-                    template_options = {t["id"]: t["name"] for t in st.session_state.templates}
-                    selected_template = st.selectbox(
-                        "Select Alt Text Template",
-                        options=list(template_options.keys()),
-                        format_func=lambda x: template_options[x],
-                        key="bulk_alt_template"
-                    )
-                    
-                    # Preview selected template
-                    template = next((t for t in st.session_state.templates if t["id"] == selected_template), None)
-                    if template:
-                        preview = preview_template(template["template"], st.session_state.current_product)
-                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
-                        st.write(f"Preview: {preview}")
-                        st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    st.info("No alt text templates available. Create templates in the Templates tab.")
-                    selected_template = None
-            
-            with col2:
-                if selected_template and st.button("Apply to All Images", use_container_width=True, type="primary"):
-                    # Apply template to all images
-                    product = st.session_state.current_product
-                    for image in product["images"]:
-                        apply_template_to_image(product, image["id"], selected_template)
-                    
-                    st.success("✅ Alt text template applied to all images")
-                    st.rerun()
-        
-        # Filename Template Bulk Tab
-        with template_bulk_tabs[1]:
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                if st.session_state.filename_templates:
-                    filename_template_options = {t["id"]: t["name"] for t in st.session_state.filename_templates}
-                    selected_filename_template = st.selectbox(
-                        "Select Filename Template",
-                        options=list(filename_template_options.keys()),
-                        format_func=lambda x: filename_template_options[x],
-                        key="bulk_filename_template"
-                    )
-                    
-                    # Preview selected template
-                    template = next((t for t in st.session_state.filename_templates if t["id"] == selected_filename_template), None)
-                    if template:
-                        preview = preview_template(template["template"], st.session_state.current_product)
-                        if "." not in preview:
-                            preview += ".jpg"
-                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
-                        st.write(f"Preview: {preview}")
-                        st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    st.info("No filename templates available. Create templates in the Templates tab.")
-                    selected_filename_template = None
-            
-            with col2:
-                if selected_filename_template and st.button("Apply to All Images", use_container_width=True, type="primary", key="bulk_apply_filename"):
-                    # Apply template to all images
-                    product = st.session_state.current_product
-                    for image in product["images"]:
-                        apply_filename_template_to_image(product, image["id"], selected_filename_template)
-                    
-                    st.success("✅ Filename template applied to all images")
-                    st.rerun()
-        
-        # Display images with alt text and filename editing
-        st.subheader("Product Images")
-        
-        # Create a grid of images
-        image_grid = st.container()
-        
-        with image_grid:
-            # Create columns for the grid - make it more compact with 3 columns
-            cols = st.columns(3)
-            
-            for i, image in enumerate(st.session_state.current_product["images"]):
-                col_idx = i % 3
-                
-                with cols[col_idx]:
-                    st.markdown(f"<div class='image-card'>", unsafe_allow_html=True)
-                    
-                    # Display image
-                    try:
-                        response = requests.get(image["src"])
-                        img = Image.open(BytesIO(response.content))
-                        st.image(img, width=200)
-                    except:
-                        st.image("https://via.placeholder.com/200x200?text=No+Image")
-                    
-                    # Use tabs for Alt Text and Filename settings
-                    image_tabs = st.tabs(["Alt Text", "Filename"])
-                    
-                    # Alt Text Tab
-                    with image_tabs[0]:
-                        # Current alt text
-                        st.text_area(
-                            f"Alt Text #{i+1}",
-                            value=image.get("alt", ""),
-                            key=f"alt_{image['id']}",
-                            height=80
-                        )
-                        
-                        # Alt Text Template selector
-                        if st.session_state.templates:
-                            template_options = {t["id"]: t["name"] for t in st.session_state.templates}
-                            template_options[""] = "Select a template..."
-                            
-                            selected = st.selectbox(
-                                "Apply Template",
-                                options=list(template_options.keys()),
-                                format_func=lambda x: template_options[x],
-                                key=f"template_{image['id']}",
-                                index=0
-                            )
-                            
-                            # Action buttons
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if selected:
-                                    if st.button("Apply", key=f"apply_{image['id']}"):
-                                        new_alt_text = apply_template_to_image(
-                                            st.session_state.current_product,
-                                            image["id"],
-                                            selected
-                                        )
-                                        st.success(f"Template applied")
-                                        st.rerun()
-                            
-                            with col2:
-                                if st.button("Clear", key=f"clear_{image['id']}"):
-                                    # Clear alt text
-                                    for img in st.session_state.current_product["images"]:
-                                        if img["id"] == image["id"]:
-                                            img["alt"] = ""
-                                            img["applied_template"] = None
-                                            
-                                            # Update in Shopify
-                                            update_image_alt_text(st.session_state.current_product["id"], image["id"], "")
-                                            break
-                                    
-                                    st.success("Alt text cleared")
-                                    st.rerun()
-                    
-                    # Filename Tab
-                    with image_tabs[1]:
-                        # Display current filename
-                        st.markdown(f"<div class='filename-field'>Current: {image.get('filename', 'No filename')}</div>", unsafe_allow_html=True)
-                        
-                        # Filename Template selector
-                        if st.session_state.filename_templates:
-                            filename_template_options = {t["id"]: t["name"] for t in st.session_state.filename_templates}
-                            filename_template_options[""] = "Select a template..."
-                            
-                            selected_filename = st.selectbox(
-                                "Apply Filename Template",
-                                options=list(filename_template_options.keys()),
-                                format_func=lambda x: filename_template_options[x],
-                                key=f"filename_template_{image['id']}",
-                                index=0
-                            )
-                            
-                            # Action buttons
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if selected_filename:
-                                    if st.button("Apply", key=f"apply_filename_{image['id']}"):
-                                        new_filename = apply_filename_template_to_image(
-                                            st.session_state.current_product,
-                                            image["id"],
-                                            selected_filename
-                                        )
-                                        st.success(f"Filename updated")
-                                        st.rerun()
-                            
-                            with col2:
-                                if st.button("Clear", key=f"clear_filename_{image['id']}"):
-                                    # We can't really "clear" a filename back to default in Shopify
-                                    # But we can mark it as not having an applied template
-                                    for img in st.session_state.current_product["images"]:
-                                        if img["id"] == image["id"]:
-                                            img["applied_filename_template"] = None
-                                            break
-                                    
-                                    st.success("Filename template cleared")
-                                    st.rerun()
-                        else:
-                            st.info("Create filename templates in the Templates tab")
-                    
-                    st.markdown("</div>", unsafe_allow_html=True)
-        
         # Display existing alt text templates
         st.subheader("Your Alt Text Templates")
         
@@ -1203,3 +1164,34 @@ elif st.session_state.active_tab == "products":
                     st.rerun()
                 else:
                     st.error("Please provide both template name and string")
+        
+        # Display existing filename templates
+        st.subheader("Your Filename Templates")
+        
+        if st.session_state.filename_templates:
+            # Display templates in a grid
+            template_cols = st.columns(2)
+            for i, template in enumerate(st.session_state.filename_templates):
+                col_idx = i % 2
+                with template_cols[col_idx]:
+                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
+                    st.subheader(template['name'])
+                    st.code(template['template'])
+                    
+                    # Preview for first product if available
+                    if st.session_state.products:
+                        preview = preview_template(template["template"], st.session_state.products[0])
+                        if "." not in preview:
+                            preview += ".jpg"
+                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
+                        st.write(f"Preview: {preview}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([3, 1])
+                    with col2:
+                        if st.button("Delete", key=f"delete_filename_{template['id']}"):
+                            st.session_state.filename_templates.pop(i)
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("No filename templates created yet. Use the form above to create your first template.")
