@@ -72,7 +72,7 @@ When connecting to the Shopify Admin API, you need to use the correct URL format
         "template_guide": """
 ## Template Variables Guide
 
-Templates allow you to create reusable alt text patterns for your product images.
+Templates allow you to create reusable patterns for your product images.
 
 ### Available Variables
 
@@ -83,6 +83,8 @@ Templates allow you to create reusable alt text patterns for your product images
 - `{store}` - Your store name
 - `{sku}` - Product SKU codes (if available)
 - `{color}` - Detected color from product title
+- `{index}` - Image index number (useful for filenames)
+- `{id}` - A unique ID to prevent duplicate filenames
 
 ### Template Examples
 
@@ -106,36 +108,47 @@ Buy {title} from {vendor} - Premium {type}
 {color} {title} from {store} - {sku}
 ```
 
+**Filename template examples:**
+```
+{vendor}-{title}-{index}
+{store}-{type}-{color}-{id}
+{sku}-product-image-{index}
+```
+
 ### Best Practices
 
-1. **Keep it concise** - Aim for 8-10 words
+1. **Keep it concise** - Aim for 8-10 words for alt text
 2. **Be descriptive** - Include key product details
 3. **Use natural language** - Write for humans, not just search engines
 4. **Avoid keyword stuffing** - It can hurt your SEO
 5. **Include brand/vendor** - This improves searchability
+6. **For filenames** - Use hyphens instead of spaces, keep it lowercase
+7. **Prevent duplicates** - Use `{index}` or `{id}` in filename templates
 """,
 
         # App User Guide
         "app_user_guide": """
 # Shopify Alt Text Manager - User Guide
 
-This app helps you efficiently manage alt text for your Shopify product images using customizable templates.
+This app helps you efficiently manage alt text and filenames for your Shopify product images using customizable templates.
 
 ## Main Features
 
-1. **Template-Based Alt Text Generation**
+1. **Template-Based Generation**
    - Create reusable templates with variables like {title}, {vendor}, etc.
    - Apply templates to individual images or in bulk
+   - Templates work for both alt text and filenames
 
 2. **Product Management**
    - Import products directly from your Shopify store
    - Filter and search products easily
    - Select specific products to work with
 
-3. **Image Alt Text Management**
+3. **Image Management**
    - View all product images in an organized grid
-   - See real-time previews of generated alt text
+   - See real-time previews of generated text
    - Track alt text coverage with detailed metrics
+   - Rename image files using templates
 
 ## Workflow
 
@@ -145,10 +158,11 @@ This app helps you efficiently manage alt text for your Shopify product images u
 4. **Apply templates** to product images (Product Detail tab)
 5. **Sync changes** back to your Shopify store
 
-## Why Alt Text Matters
+## Why Alt Text and Proper Filenames Matter
 
 - **Accessibility**: Helps visually impaired users understand your images
 - **SEO**: Improves image search visibility and ranking
+- **Organization**: Well-named files make inventory management easier
 - **User Experience**: Provides context when images fail to load
 """,
 
@@ -160,15 +174,15 @@ This app helps you efficiently manage alt text for your Shopify product images u
    * Get your Shopify Admin API credentials from your Shopify admin
    * Enter your Shop URL and Access Token in the sidebar
 
-2. **Create Alt Text Templates**
+2. **Create Templates**
    * Switch to the Templates tab
-   * Create templates using variables like {title}, {vendor}, etc.
-   * You can now use additional variables like {color}, {sku}, and {store}
+   * Create templates for both alt text and filenames
+   * Use variables like {title}, {vendor}, {index}, etc.
 
 3. **Manage Product Images**
    * Import products from your store
-   * You can choose to fetch all products or select specific ones
    * Apply templates to product images individually or in bulk
+   * Update both alt text and filenames with your templates
    * Review and sync changes back to Shopify
 """,
 
@@ -203,9 +217,9 @@ This tab allows you to manage your Shopify products and their images.
 
         # Alt Text Guide
         "alt_text_guide": """
-## Image Alt Text Best Practices
+## Image Alt Text & Filename Best Practices
 
-Alt text (alternative text) provides a textual alternative to non-text content like images.
+Alt text provides a textual alternative to non-text content like images. Proper filenames improve organization and SEO.
 
 ### Why Alt Text Is Important
 
@@ -221,17 +235,29 @@ Alt text (alternative text) provides a textual alternative to non-text content l
 - **Avoid "Image of..."** - Don't start with "picture of" or "image of"
 - **Consider Context** - How does the image relate to the surrounding content?
 
+### Filename Best Practices
+
+- **Use hyphens** instead of spaces or underscores
+- **Keep filenames lowercase** to avoid case-sensitivity issues
+- **Include relevant keywords** for SEO benefits
+- **Be consistent** across your product catalog
+- **Add unique identifiers** like product SKUs or sequence numbers
+- **Keep filenames meaningful** but reasonably short
+
 ### Examples
 
-#### Poor Alt Text:
-- "Product image"
-- "DSC10234.jpg"
-- "Click here to buy"
+#### Poor Alt Text & Filenames:
+- Alt: "Product image" / Filename: "DSC10234.jpg"
+- Alt: "Click here to buy" / Filename: "final_image_v2.jpg"
+- Alt: "" (empty) / Filename: "img_45.png"
 
-#### Good Alt Text:
-- "Women's blue denim jacket with button closure by BrandName"
-- "Red ceramic coffee mug with floral pattern"
-- "Stainless steel kitchen knife set with wooden handles"
+#### Good Alt Text & Filenames:
+- Alt: "Women's blue denim jacket with button closure by BrandName"
+  Filename: "brandname-womens-denim-jacket-blue-001.jpg"
+- Alt: "Red ceramic coffee mug with floral pattern"
+  Filename: "red-ceramic-mug-floral-sk1234.jpg"
+- Alt: "Stainless steel kitchen knife set with wooden handles"
+  Filename: "premium-knife-set-wooden-handle-5pc-001.jpg"
 """,
 
         # FAQ Content
@@ -252,7 +278,7 @@ Alt text (alternative text) provides a textual alternative to non-text content l
 ### Template Usage
 
 #### Q: What variables can I use in templates?
-**A:** You can use `{title}`, `{vendor}` or `{brand}`, `{type}` or `{category}`, `{tags}`, `{store}`, `{sku}`, and `{color}` in your templates.
+**A:** You can use `{title}`, `{vendor}`, `{type}`, `{tags}`, `{store}`, `{sku}`, `{color}`, `{index}`, and `{id}` in your templates.
 
 #### Q: Can I use HTML in my alt text?
 **A:** No, alt text should be plain text only. HTML tags will be displayed as text.
@@ -260,16 +286,22 @@ Alt text (alternative text) provides a textual alternative to non-text content l
 #### Q: Is there a character limit for alt text?
 **A:** While there's no strict limit, it's recommended to keep alt text under 125 characters for optimal accessibility.
 
+#### Q: Why do I need {index} or {id} in filename templates?
+**A:** These ensure unique filenames, preventing conflicts if you apply the same template to multiple images.
+
 ### Product Management
 
 #### Q: How many products can I fetch at once?
 **A:** The current implementation fetches up to 50 products at a time.
 
 #### Q: Are my changes saved automatically?
-**A:** Yes, changes are sent to Shopify in real-time when you apply a template or clear alt text.
+**A:** Yes, changes are sent to Shopify in real-time when you apply a template or clear alt text/filenames.
 
 #### Q: Can I export my alt text data?
 **A:** This feature is not currently available but may be added in future updates.
+
+#### Q: Will renaming image files affect my storefront?
+**A:** No, Shopify maintains the correct URLs even when you rename the file. The visible filename is updated in your admin and for SEO purposes.
 
 ### Security
 
