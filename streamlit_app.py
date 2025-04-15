@@ -414,7 +414,7 @@ if st.session_state.active_tab == "dashboard":
                         
                         # Show product image if available
                         if product["images"]:
-                            try:
+                    try:
                         response = requests.get(image["src"])
                         img = Image.open(BytesIO(response.content))
                         st.image(img, width=200)
