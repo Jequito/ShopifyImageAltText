@@ -1158,6 +1158,70 @@ elif st.session_state.active_tab == "templates":
                 else:
                     st.error("Please provide both template name and string")
         
+        # Display existing alt text templates
+        st.subheader("Your Alt Text Templates")
+        
+        if st.session_state.templates:
+            # Display templates in a grid
+            template_cols = st.columns(2)
+            for i, template in enumerate(st.session_state.templates):
+                col_idx = i % 2
+                with template_cols[col_idx]:
+                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
+                    st.subheader(template['name'])
+                    st.code(template['template'])
+                    
+                    # Preview for first product if available
+                    if st.session_state.products:
+                        preview = preview_template(template["template"], st.session_state.products[0])
+                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
+                        st.write(f"Preview: {preview}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([3, 1])
+                    with col2:
+                        if st.button("Delete", key=f"delete_alt_{template['id']}"):
+                            st.session_state.templates.pop(i)
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("No alt text templates created yet. Use the form above to create your first template.")
+    
+    # Filename Templates tab
+    with template_tabs[1]:
+        # Filename template creation form
+        with st.form("filename_template_form", clear_on_submit=True):
+            st.subheader("Create New Filename Template")
+            
+            filename_template_name = st.text_input(
+                "Template Name", 
+                key="new_filename_template_name",
+                placeholder="e.g., Basic Filename Template"
+            )
+            
+            filename_template_string = st.text_input(
+                "Template String", 
+                placeholder="e.g., {vendor}-{title}-{index}",
+                key="new_filename_template_string"
+            )
+            
+            st.caption("Available Variables: {title}, {vendor}, {type}, {tags}, {store}, {sku}, {color}, {index}, {id}")
+            st.caption("Note: Include {index} or {id} to ensure unique filenames. Extensions will be added automatically if missing.")
+            
+            submitted = st.form_submit_button("Add Filename Template", type="primary")
+            if submitted:
+                if filename_template_name and filename_template_string:
+                    new_template = {
+                        "id": f"filename_template_{len(st.session_state.filename_templates) + 1}",
+                        "name": filename_template_name,
+                        "template": filename_template_string
+                    }
+                    st.session_state.filename_templates.append(new_template)
+                    st.success(f"Filename Template '{filename_template_name}' added successfully!")
+                    st.rerun()
+                else:
+                    st.error("Please provide both template name and string")
+        
         # Display existing filename templates
         st.subheader("Your Filename Templates")
         
