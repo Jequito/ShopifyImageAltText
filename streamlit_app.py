@@ -414,12 +414,14 @@ if st.session_state.active_tab == "dashboard":
                         
                         # Show product image if available
                         if product["images"]:
-                    try:
-                        response = requests.get(image["src"])
-                        img = Image.open(BytesIO(response.content))
-                        st.image(img, width=200)
-                    except:
-                        st.image("https://via.placeholder.com/200x200?text=No+Image")
+                            try:
+                                response = requests.get(product["images"][0]["src"])
+                                img = Image.open(BytesIO(response.content))
+                                st.image(img, width=150)
+                            except:
+                                st.image("https://via.placeholder.com/150x150?text=No+Image")
+                        else:
+                            st.image("https://via.placeholder.com/150x150?text=No+Image")
                     
                     # Use tabs for Alt Text and Filename settings
                     image_tabs = st.tabs(["Alt Text", "Filename"])
