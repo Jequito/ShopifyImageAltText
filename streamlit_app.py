@@ -789,3 +789,410 @@ elif st.session_state.active_tab == "products":
                             st.info("Create filename templates in the Templates tab")
                     
                     st.markdown("</div>", unsafe_allow_html=True)
+# Debug tab
+elif st.session_state.active_tab == "debug":
+    st.header("Debug Mode")
+    
+    st.warning("⚠️ This section is for troubleshooting purposes only.")
+    
+    if not st.session_state.shopify_connected:
+        st.error("You need to connect to Shopify first to use the debugging tools.")
+    else:
+        st.info("Use these tools to diagnose connection issues with your Shopify store.")
+        
+        # Debug options
+        st.subheader("Connection Details")
+        st.write(f"**Store URL:** {st.session_state.shop_url}")
+        st.write(f"**Connection Status:** {'Connected' if st.session_state.shopify_connected else 'Disconnected'}")
+        if hasattr(st.session_state, 'shop_name') and st.session_state.shop_name:
+            st.write(f"**Store Name:** {st.session_state.shop_name}")
+        
+        # Debug tools expander
+        with st.expander("Run Comprehensive Diagnostics", expanded=not st.session_state.compact_mode):
+            if st.button("Start Diagnostic Test", type="primary", use_container_width=True):
+                if st.session_state.shopify_connected and hasattr(st.session_state, 'shop_url') and hasattr(st.session_state, 'access_token'):
+                    with st.spinner("Running diagnostics..."):
+                        # Use the enhanced_debug_tools module's function
+                        display_debug_info(st.session_state.shop_url, st.session_state.access_token)
+                else:
+                    st.error("Cannot run diagnostics. Please ensure you are connected to Shopify.")
+        
+        # Test individual API endpoints
+        st.subheader("Test API Endpoints")
+        
+        test_endpoints = {
+            "Shop Information": "/shop.json",
+            "Product Count": "/products/count.json",
+            "First 5 Products": "/products.json?limit=5",
+            "First 5 Collections": "/collections.json?limit=5"
+        }
+        
+        selected_endpoint = st.selectbox(
+            "Select API endpoint to test", 
+            options=list(test_endpoints.keys())
+        )
+        
+        if st.button("Test Endpoint", key="test_endpoint_btn"):
+            with st.spinner(f"Testing endpoint {test_endpoints[selected_endpoint]}..."):
+                result = make_shopify_request(test_endpoints[selected_endpoint])
+                if result:
+                    st.success("✅ API call successful")
+                    st.json(result)
+                else:
+                    st.error("❌ API call failed")
+        
+        # Runtime information
+        st.subheader("Runtime Information")
+        
+        info_cols = st.columns(2)
+        
+        with info_cols[0]:
+            st.write("**Session State Variables:**")
+            session_info = {k: v for k, v in st.session_state.items() if k not in ['access_token', 'products', 'current_product']}
+            st.write(session_info)
+        
+        with info_cols[1]:
+            st.write("**Version Information:**")
+            st.write(f"- Streamlit: {st.__version__}")
+            st.write("- Requests: " + requests.__version__)
+            st.write("- Pandas: " + pd.__version__)
+            
+        # Toggle detailed debug mode
+        st.session_state.debug_mode = st.checkbox("Enable detailed debug logging", value=st.session_state.debug_mode)
+        
+        # Clear session state option
+        st.subheader("Reset Application")
+        clear_cols = st.columns([3, 1])
+        
+        with clear_cols[0]:
+            st.warning("This will reset all session data including your connection, templates, and product cache.")
+        
+        with clear_cols[1]:
+            if st.button("Reset App", type="primary", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.success("Application has been reset. Refreshing...")
+                st.rerun()
+
+# Help tab
+elif st.session_state.active_tab == "help":
+    st.header("Help & Documentation")
+    
+    # Create tabs for different help sections
+    help_tabs = st.tabs([
+        "🔧 App Guide", 
+        "🔌 Connection Help", 
+        "📝 Template Help", 
+        "🖼️ Alt Text Guide", 
+        "❓ FAQ"
+    ])
+    
+    # App Guide tab
+    with help_tabs[0]:
+        st.markdown(guides["app_user_guide"])
+        st.markdown(guides["getting_started"])
+    
+    # Connection Help tab
+    with help_tabs[1]:
+        st.markdown(guides["connection_guide"])
+        st.markdown(guides["troubleshooting"])
+    
+    # Template Help tab
+    with help_tabs[2]:
+        st.markdown(guides["template_guide"])
+    
+    # Alt Text Guide tab
+    with help_tabs[3]:
+        st.markdown(guides["alt_text_guide"])
+    
+    # FAQ tab
+    with help_tabs[4]:
+        st.markdown(guides["faq"])
+    
+    # Contact information
+    st.markdown("---")
+    st.subheader("Need More Help?")
+    st.markdown("""
+    If you're experiencing issues not covered in the documentation, please reach out for support:
+    
+    - Check the [Shopify API documentation](https://shopify.dev/docs/admin-api) for reference
+    - Review the [Streamlit documentation](https://docs.streamlit.io/) for app functionality
+    - Refer to the [Alt Text best practices](https://www.w3.org/WAI/tutorials/images/decision-tree/) from W3C
+    """)
+    
+    # Version information
+    st.markdown("---")
+    st.caption("Shopify Alt Text Manager v1.0")
+    st.caption(f"Running on Streamlit {st.__version__}")
+
+# Connect tab
+elif st.session_state.active_tab == "connect":
+    st.header("Connect to Shopify")
+    
+    # Connection form
+    with st.form("connection_form"):
+        # Help text with URL format instructions
+        st.markdown("""
+        **Shopify URL Format:**
+        - Enter your Shopify store subdomain
+        - Example: `your-store.myshopify.com` or just `your-store`
+        - Do not include `https://` or `http://`
+        """)
+        
+        shop_url = st.text_input(
+            "Shop URL",
+            value=st.session_state.get("shop_url", ""),
+            placeholder="your-store.myshopify.com"
+        )
+        
+        # Help text for access token
+        st.markdown("""
+        **Access Token Format:**
+        - Private app tokens start with `shpat_`
+        - Custom app tokens start with `shpca_`
+        - Ensure the token has `read_products` and `write_products` scopes
+        """)
+        
+        access_token = st.text_input(
+            "Access Token",
+            value=st.session_state.get("access_token", ""),
+            placeholder="shpat_xxxxxxxxxxxxxxxxxxxxx",
+            type="password"
+        )
+        
+        show_debug = st.checkbox("Show debug logs", value=False)
+        
+        # Submit button
+        submitted = st.form_submit_button("Connect to Shopify", type="primary", use_container_width=True)
+        
+        if submitted:
+            if shop_url and access_token:
+                # Store credentials in session state
+                st.session_state.shop_url = shop_url
+                st.session_state.access_token = access_token
+                
+                # Format shop URL
+                formatted_shop_url = shop_url.strip()
+                if formatted_shop_url.startswith("https://"):
+                    formatted_shop_url = formatted_shop_url.replace("https://", "")
+                if not ".myshopify.com" in formatted_shop_url:
+                    formatted_shop_url = f"{formatted_shop_url}.myshopify.com"
+                
+                st.session_state.shop_url = formatted_shop_url
+                
+                # Test connection
+                with st.spinner("Connecting to Shopify..."):
+                    try:
+                        # Make a direct request to test connection
+                        raw_response = requests.get(
+                            f"https://{formatted_shop_url}/admin/api/2023-10/shop.json",
+                            headers={
+                                "X-Shopify-Access-Token": access_token,
+                                "Content-Type": "application/json"
+                            }
+                        )
+                        
+                        # Display debug info if requested
+                        if show_debug:
+                            st.write("### Response Status")
+                            st.code(f"Status Code: {raw_response.status_code}")
+                            
+                            st.write("### Response Headers")
+                            st.json(dict(raw_response.headers))
+                            
+                            # Display response content
+                            st.write("### Response Body")
+                            try:
+                                response_json = raw_response.json()
+                                st.json(response_json)
+                            except:
+                                st.code(f"Raw Response: {raw_response.text[:1000]}")
+                        
+                        # Handle the connection result
+                        if 200 <= raw_response.status_code < 300:
+                            st.session_state.shopify_connected = True
+                            try:
+                                response_json = raw_response.json()
+                                if "shop" in response_json:
+                                    shop_name = response_json['shop'].get('name', 'Shopify store')
+                                    st.session_state.shop_name = shop_name
+                                    st.success(f"✅ Connected to {shop_name} successfully!")
+                                else:
+                                    st.success("✅ Connected to Shopify successfully!")
+                            except:
+                                st.success("✅ Connected to Shopify successfully!")
+                            
+                            # Just rerun to refresh the UI, don't redirect
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Failed to connect. Status code: {raw_response.status_code}")
+                            
+                            # Status-based troubleshooting hints
+                            if raw_response.status_code == 401:
+                                st.error("⚠️ Authentication failed (401). Your access token is invalid or expired.")
+                                st.info("Generate a new access token in your Shopify admin.")
+                            elif raw_response.status_code == 403:
+                                st.error("⚠️ Permission denied (403). Your access token doesn't have the required permissions.")
+                                st.info("Ensure your token has 'read_products' and 'write_products' scopes.")
+                            elif raw_response.status_code == 404:
+                                st.error("⚠️ Not found (404). The shop URL may be incorrect.")
+                                st.info("Double-check your store URL format.")
+                            elif raw_response.status_code == 429:
+                                st.error("⚠️ Rate limited (429). Too many requests in a short time.")
+                                st.info("Wait a few minutes before trying again.")
+                                
+                    except Exception as e:
+                        st.error(f"Connection error: {str(e)}")
+            else:
+                st.error("Please provide both shop URL and access token")
+    
+    # Help guides
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        with st.expander("📘 Connection Guide", expanded=not st.session_state.compact_mode):
+            st.markdown(guides["connection_guide"])
+    
+    with col2:
+        with st.expander("🔍 Troubleshooting", expanded=not st.session_state.compact_mode):
+            st.markdown(guides["troubleshooting"])
+
+# Templates tab
+elif st.session_state.active_tab == "templates":
+    st.header("Template Management")
+    
+    # Add template guide
+    with st.expander("📝 Template Guide", expanded=len(st.session_state.templates) == 0 and not st.session_state.compact_mode):
+        st.markdown(guides["template_guide"])
+    
+    # Create tabs for Alt Text Templates and Filename Templates
+    template_tabs = st.tabs(["Alt Text Templates", "Filename Templates"])
+    
+    # Alt Text Templates tab
+    with template_tabs[0]:
+        # Template creation form
+        with st.form("alt_text_template_form", clear_on_submit=True):
+            st.subheader("Create New Alt Text Template")
+            
+            template_name = st.text_input(
+                "Template Name", 
+                key="new_alt_text_template_name",
+                placeholder="e.g., Basic Product Template"
+            )
+            
+            template_string = st.text_area(
+                "Template String",
+                placeholder="e.g., {title} - {vendor} product",
+                key="new_alt_text_template_string"
+            )
+            
+            st.caption("Available Variables: {title}, {vendor}, {type}, {tags}, {store}, {sku}, {color}, {brand}, {category}")
+            
+            submitted = st.form_submit_button("Add Alt Text Template", type="primary")
+            if submitted:
+                if template_name and template_string:
+                    new_template = {
+                        "id": f"template_{len(st.session_state.templates) + 1}",
+                        "name": template_name,
+                        "template": template_string
+                    }
+                    st.session_state.templates.append(new_template)
+                    st.success(f"Alt Text Template '{template_name}' added successfully!")
+                    st.rerun()
+                else:
+                    st.error("Please provide both template name and string")
+        
+        # Display existing alt text templates
+        st.subheader("Your Alt Text Templates")
+        
+        if st.session_state.templates:
+            # Display templates in a grid
+            template_cols = st.columns(2)
+            for i, template in enumerate(st.session_state.templates):
+                col_idx = i % 2
+                with template_cols[col_idx]:
+                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
+                    st.subheader(template['name'])
+                    st.code(template['template'])
+                    
+                    # Preview for first product if available
+                    if st.session_state.products:
+                        preview = preview_template(template["template"], st.session_state.products[0])
+                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
+                        st.write(f"Preview: {preview}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([3, 1])
+                    with col2:
+                        if st.button("Delete", key=f"delete_alt_{template['id']}"):
+                            st.session_state.templates.pop(i)
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("No alt text templates created yet. Use the form above to create your first template.")
+    
+    # Filename Templates tab
+    with template_tabs[1]:
+        # Filename template creation form
+        with st.form("filename_template_form", clear_on_submit=True):
+            st.subheader("Create New Filename Template")
+            
+            filename_template_name = st.text_input(
+                "Template Name", 
+                key="new_filename_template_name",
+                placeholder="e.g., Basic Filename Template"
+            )
+            
+            filename_template_string = st.text_input(
+                "Template String", 
+                placeholder="e.g., {vendor}-{title}-{index}",
+                key="new_filename_template_string"
+            )
+            
+            st.caption("Available Variables: {title}, {vendor}, {type}, {tags}, {store}, {sku}, {color}, {index}, {id}")
+            st.caption("Note: Include {index} or {id} to ensure unique filenames. Extensions will be added automatically if missing.")
+            
+            submitted = st.form_submit_button("Add Filename Template", type="primary")
+            if submitted:
+                if filename_template_name and filename_template_string:
+                    new_template = {
+                        "id": f"filename_template_{len(st.session_state.filename_templates) + 1}",
+                        "name": filename_template_name,
+                        "template": filename_template_string
+                    }
+                    st.session_state.filename_templates.append(new_template)
+                    st.success(f"Filename Template '{filename_template_name}' added successfully!")
+                    st.rerun()
+                else:
+                    st.error("Please provide both template name and string")
+        
+        # Display existing filename templates
+        st.subheader("Your Filename Templates")
+        
+        if st.session_state.filename_templates:
+            # Display templates in a grid
+            template_cols = st.columns(2)
+            for i, template in enumerate(st.session_state.filename_templates):
+                col_idx = i % 2
+                with template_cols[col_idx]:
+                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
+                    st.subheader(template['name'])
+                    st.code(template['template'])
+                    
+                    # Preview for first product if available
+                    if st.session_state.products:
+                        preview = preview_template(template["template"], st.session_state.products[0])
+                        if "." not in preview:
+                            preview += ".jpg"
+                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
+                        st.write(f"Preview: {preview}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns([3, 1])
+                    with col2:
+                        if st.button("Delete", key=f"delete_filename_{template['id']}"):
+                            st.session_state.filename_templates.pop(i)
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("No filename templates created yet. Use the form above to create your first template.")
