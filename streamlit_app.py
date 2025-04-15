@@ -1158,13 +1158,13 @@ elif st.session_state.active_tab == "templates":
                 else:
                     st.error("Please provide both template name and string")
         
-        # Display existing alt text templates
-        st.subheader("Your Alt Text Templates")
+        # Display existing filename templates
+        st.subheader("Your Filename Templates")
         
-        if st.session_state.templates:
+        if st.session_state.filename_templates:
             # Display templates in a grid
             template_cols = st.columns(2)
-            for i, template in enumerate(st.session_state.templates):
+            for i, template in enumerate(st.session_state.filename_templates):
                 col_idx = i % 2
                 with template_cols[col_idx]:
                     st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
@@ -1174,29 +1174,17 @@ elif st.session_state.active_tab == "templates":
                     # Preview for first product if available
                     if st.session_state.products:
                         preview = preview_template(template["template"], st.session_state.products[0])
+                        if "." not in preview:
+                            preview += ".jpg"
                         st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
                         st.write(f"Preview: {preview}")
                         st.markdown("</div>", unsafe_allow_html=True)
                     
                     col1, col2 = st.columns([3, 1])
                     with col2:
-                        if st.button("Delete", key=f"delete_alt_{template['id']}"):
-                            st.session_state.templates.pop(i)
+                        if st.button("Delete", key=f"delete_filename_{template['id']}"):
+                            st.session_state.filename_templates.pop(i)
                             st.rerun()
                     st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.info("No alt text templates created yet. Use the form above to create your first template.")
-    
-    # Filename Templates tab
-    with template_tabs[1]:
-        # Filename template creation form
-        with st.form("filename_template_form", clear_on_submit=True):
-            st.subheader("Create New Filename Template")
-            
-            filename_template_name = st.text_input(
-                "Template Name", 
-                key="new_filename_template_name",
-                placeholder="e.g., Basic Filename Template"
-            )
-            
-            filename_
+            st.info("No filename templates created yet. Use the form above to create your first template.")
