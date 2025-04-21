@@ -1,109 +1,286 @@
-.main {
-    padding: 1rem;
-}
-.stTabs [data-baseweb="tab-list"] {
-    gap: 2px;
-}
-.stTabs [data-baseweb="tab"] {
-    padding: 8px 16px;
-    border-radius: 4px 4px 0px 0px;
-    font-size: 0.9rem;
-}
-.status-connected {
-    color: green;
-    font-weight: bold;
-}
-.status-disconnected {
-    color: red;
-    font-weight: bold;
-}
-.template-card {
-    background-color: #f8f9fa;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 10px;
-}
-.image-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-.image-card {
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    width: 100%;
-    margin-bottom: 10px;
-}
-.alt-preview {
-    background-color: #f0f0f0;
-    padding: 8px;
-    border-radius: 4px;
-    margin-top: 8px;
-    font-size: 12px;
-    min-height: 40px;
-}
-.metric-card {
-    background-color: #f8f9fa;
-    border-radius: 10px;
-    padding: 15px;
-    text-align: center;
-    height: 100%;
-}
-.metric-value {
-    font-size: 24px;
-    font-weight: bold;
-}
-.coverage-bar {
-    height: 10px;
-    background-color: #e9ecef;
-    border-radius: 5px;
-    margin-top: 5px;
-}
-.coverage-progress {
-    height: 10px;
-    background-color: #4CAF50;
-    border-radius: 5px;
-}
-/* Compact UI Styles */
-.main-nav {
-    margin-bottom: 0.5rem;
-}
-div.block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-.block-container {
-    max-width: 1200px;
-}
-h1 {
-    margin-bottom: 0.5rem;
-}
-.stButton button {
-    font-size: 0.9rem;
-}
-.stTextInput input, .stSelectbox select {
-    font-size: 0.9rem;
-}
-.stTab [data-baseweb="tab"] p {
-    font-size: 0.9rem;
-}
-div.stButton > button:first-child {
-    padding: 0.25rem 1rem;
-}
-.filename-field {
-    font-size: 12px;
-    color: #666;
-    margin: 5px 0;
-    overflow-wrap: break-word;
-    word-break: break-word;
-}
-/* Streamlit default overrides for compact UI */
-.row-widget.stRadio > div {
-    flex-direction: row;
-    align-items: center;
-}
-.row-widget.stRadio > div > label {
-    margin-bottom: 0;
-    margin-right: 1rem;
-}
+"""
+Improved CSS and UI fixes for the Shopify Alt Text Manager
+These improvements fix the white bars issue and provide a more consistent UI
+"""
+
+def improved_ui_styles():
+    """Add improved CSS styles to fix UI issues"""
+    st.markdown("""
+    <style>
+    /* Fix the white bars near headers */
+    .main .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Improve tabs styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+        background-color: #f5f5f5;
+        padding: 2px;
+        border-radius: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        font-weight: normal;
+    }
+    
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #4c88b9;
+        color: white;
+    }
+    
+    /* Consistent card styling */
+    .template-card, .product-card, .metric-card, .image-card {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    /* Improve button styling */
+    .stButton button {
+        border-radius: 4px;
+        font-weight: normal;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton button:hover {
+        opacity: 0.9;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Fix for compact mode */
+    .compact-ui .main .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        max-width: 1200px;
+    }
+    
+    .compact-ui .stButton button {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.75rem;
+    }
+    
+    .compact-ui .row-widget {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Improved form styling */
+    .form-container {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    /* Improved expander styling */
+    .streamlit-expanderHeader {
+        font-weight: bold;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+    
+    .status-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-error {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    /* Progress bars */
+    .custom-progress-container {
+        height: 8px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        margin: 5px 0;
+    }
+    
+    .custom-progress-bar {
+        height: 8px;
+        background-color: #4CAF50;
+        border-radius: 4px;
+    }
+    
+    /* Fix the sidebar compact mode */
+    .compact-ui .css-1d391kg, .compact-ui .css-12oz5g7 {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    /* Improve file uploader styling */
+    .stFileUploader {
+        margin-bottom: 1rem;
+    }
+    
+    /* Enhance multiselect styling */
+    .stMultiSelect > div:first-child {
+        background-color: white;
+        border-radius: 4px;
+    }
+    
+    /* Fix white space in radio buttons */
+    .stRadio > div {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+    }
+    
+    /* Fix layout spacing */
+    div.block-container {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        div.block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+def apply_compact_mode():
+    """Apply compact mode to the UI"""
+    if st.session_state.compact_mode:
+        st.markdown('<div class="compact-ui">', unsafe_allow_html=True)
+        # The closing div tag will be added at the end of the app rendering
+
+def improved_page_layout():
+    """Improved overall page layout"""
+    # Add improved CSS
+    improved_ui_styles()
+    
+    # Apply compact mode if enabled
+    apply_compact_mode()
+    
+    # App header with more compact layout
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title("🏪 Shopify Alt Text Manager")
+    with col2:
+        # Display compact connection status with better styling
+        if st.session_state.shopify_connected:
+            st.markdown(
+                '<div class="status-indicator status-success">✅ Connected to Shopify</div>', 
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                '<div class="status-indicator status-error">❌ Not connected to Shopify</div>', 
+                unsafe_allow_html=True
+            )
+        
+        # Toggle for compact mode with better styling
+        compact_mode = st.toggle("Compact UI", value=st.session_state.compact_mode)
+        if compact_mode != st.session_state.compact_mode:
+            st.session_state.compact_mode = compact_mode
+            st.rerun()
+    
+    # Main navigation with improved styling
+    st.markdown('<div class="main-nav">', unsafe_allow_html=True)
+    tabs = {
+        "dashboard": "🏠 Dashboard",
+        "connect": "🔌 Connect",
+        "templates": "📝 Templates",
+        "products": "📋 Products",
+        "debug": "🔍 Debug",
+        "help": "❓ Help"
+    }
+    
+    # Create horizontal tabs with better styling
+    cols = st.columns(len(tabs))
+    for i, (tab_id, tab_name) in enumerate(tabs.items()):
+        with cols[i]:
+            if st.button(
+                tab_name, 
+                key=f"tab_{tab_id}", 
+                use_container_width=True,
+                type="primary" if st.session_state.active_tab == tab_id else "secondary"
+            ):
+                st.session_state.active_tab = tab_id
+                st.rerun()
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('<hr style="margin-top: 0.5rem; margin-bottom: 1.5rem;">', unsafe_allow_html=True)
+    
+    # Return to enable closing the compact-ui div if needed
+    return st.session_state.compact_mode
+
+# Function to create consistent card UI
+def create_card(title, content, actions=None, type="default"):
+    """Create a consistent card UI component
+    
+    Args:
+        title: Card title
+        content: Card content (can be HTML)
+        actions: Optional actions HTML for buttons
+        type: Card type (default, success, warning, error)
+    """
+    card_class = "template-card"
+    if type == "success":
+        card_class += " success-card"
+    elif type == "warning":
+        card_class += " warning-card"
+    elif type == "error":
+        card_class += " error-card"
+    
+    card_html = f"""
+    <div class="{card_class}">
+        <h4 style="margin-top: 0;">{title}</h4>
+        <div>{content}</div>
+    """
+    
+    if actions:
+        card_html += f"<div class='card-actions'>{actions}</div>"
+    
+    card_html += "</div>"
+    
+    st.markdown(card_html, unsafe_allow_html=True)
+
+# Function to create a custom progress bar
+def custom_progress_bar(value, max_value=100, color="#4CAF50"):
+    """Create a custom progress bar
+    
+    Args:
+        value: Current value
+        max_value: Maximum value
+        color: Bar color
+    """
+    percent = (value / max_value * 100) if max_value > 0 else 0
+    
+    st.markdown(f"""
+    <div class="custom-progress-container">
+        <div class="custom-progress-bar" style="width: {percent}%; background-color: {color};"></div>
+    </div>
+    <div style="font-size: 0.8rem; color: #666;">{value} of {max_value} ({percent:.1f}%)</div>
+    """, unsafe_allow_html=True)
