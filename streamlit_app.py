@@ -449,10 +449,13 @@ if st.session_state.active_tab == "dashboard":
             if st.button("Go to Connect Tab"):
                 st.session_state.active_tab = "connect"
                 st.rerun()
-
+# Templates tab
+elif st.session_state.active_tab == "templates":
+    improved_template_management()
+    
 # Products tab
 elif st.session_state.active_tab == "products":
-    st.header("Products Management")
+    improved_product_management()
     
     # Products guide
     with st.expander("📋 Product Management Guide", expanded=len(st.session_state.products) == 0 and not st.session_state.compact_mode):
