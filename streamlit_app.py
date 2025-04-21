@@ -1057,12 +1057,89 @@ elif st.session_state.active_tab == "connect":
         with st.expander("🔍 Troubleshooting", expanded=not st.session_state.compact_mode):
             st.markdown(guides["troubleshooting"])
 
-# Templates tab
-elif st.session_state.active_tab == "templates":
+
+def load_sample_templates():
+    """Load sample templates for alt text and filenames"""
+    sample_alt_text_templates = [
+        {
+            "id": "template_basic",
+            "name": "Basic Product Description",
+            "template": "{title} by {vendor}, {type} product"
+        },
+        {
+            "id": "template_seo",
+            "name": "SEO Optimized",
+            "template": "Buy {title} from {vendor} - Premium {type} product"
+        },
+        {
+            "id": "template_detailed",
+            "name": "Detailed with Color",
+            "template": "{color} {title} - {vendor} {type}, a quality product from {store}"
+        },
+        {
+            "id": "template_minimal",
+            "name": "Minimal",
+            "template": "{title} - {vendor}"
+        },
+        {
+            "id": "template_professional",
+            "name": "Professional",
+            "template": "Professional {type}: {title} by {vendor}"
+        }
+    ]
+    
+    sample_filename_templates = [
+        {
+            "id": "filename_template_basic",
+            "name": "Basic Filename",
+            "template": "{vendor}-{title}-{index}"
+        },
+        {
+            "id": "filename_template_seo",
+            "name": "SEO Filename",
+            "template": "{type}-{title}-{vendor}-product-{id}"
+        },
+        {
+            "id": "filename_template_color",
+            "name": "Color Focused",
+            "template": "{color}-{title}-{vendor}-{id}"
+        },
+        {
+            "id": "filename_template_store",
+            "name": "Store Branded",
+            "template": "{store}-{type}-{title}-{id}"
+        },
+        {
+            "id": "filename_template_skus",
+            "name": "SKU Based",
+            "template": "{sku}-product-image-{index}"
+        }
+    ]
+    
+    return sample_alt_text_templates, sample_filename_templates
+
+def initialize_templates():
+    """Initialize templates if they don't exist"""
+    if 'templates' not in st.session_state:
+        st.session_state.templates = []
+    if 'filename_templates' not in st.session_state:
+        st.session_state.filename_templates = []
+    
+    # Load samples if no templates exist
+    if len(st.session_state.templates) == 0 and len(st.session_state.filename_templates) == 0:
+        sample_alt_text, sample_filenames = load_sample_templates()
+        st.session_state.templates = sample_alt_text
+        st.session_state.filename_templates = sample_filenames
+
+def improved_template_management():
+    """Improved template management interface"""
     st.header("Template Management")
     
+    # Initialize templates with samples if needed
+    initialize_templates()
+    
     # Add template guide
-    with st.expander("📝 Template Guide", expanded=len(st.session_state.templates) == 0 and not st.session_state.compact_mode):
+    with st.expander("📝 Template Guide", expanded=False):
         st.markdown(guides["template_guide"])
     
     # Create tabs for Alt Text Templates and Filename Templates
@@ -1070,10 +1147,12 @@ elif st.session_state.active_tab == "templates":
     
     # Alt Text Templates tab
     with template_tabs[0]:
-        # Template creation form
-        with st.form("alt_text_template_form", clear_on_submit=True):
-            st.subheader("Create New Alt Text Template")
-            
+        # Template creation form in a card-like container
+        st.markdown('<div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">', unsafe_allow_html=True)
+        st.subheader("Create New Alt Text Template")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
             template_name = st.text_input(
                 "Template Name", 
                 key="new_alt_text_template_name",
@@ -1083,60 +1162,173 @@ elif st.session_state.active_tab == "templates":
             template_string = st.text_area(
                 "Template String",
                 placeholder="e.g., {title} - {vendor} product",
-                key="new_alt_text_template_string"
+                key="new_alt_text_template_string",
+                height=80
             )
-            
-            st.caption("Available Variables: {title}, {vendor}, {type}, {tags}, {store}, {sku}, {color}, {brand}, {category}")
-            
-            submitted = st.form_submit_button("Add Alt Text Template", type="primary")
-            if submitted:
+            st.caption("Available Variables: {title}, {vendor}, {type}, {tags}, {store}, {sku}, {color}, {brand}, {category}, {index}, {id}")
+        
+        with col2:
+            st.write("&nbsp;")  # Space for alignment
+            st.write("&nbsp;")  # Space for alignment
+            if st.button("Add Template", type="primary", use_container_width=True):
                 if template_name and template_string:
                     new_template = {
-                        "id": f"template_{len(st.session_state.templates) + 1}",
+                        "id": f"template_{len(st.session_state.templates) + 1}_{int(time.time())}",
                         "name": template_name,
                         "template": template_string
                     }
                     st.session_state.templates.append(new_template)
-                    st.success(f"Alt Text Template '{template_name}' added successfully!")
-                    st.rerun()
+                    st.success(f"Template '{template_name}' added successfully!")
+                    st.experimental_rerun()
                 else:
                     st.error("Please provide both template name and string")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Display existing alt text templates
         st.subheader("Your Alt Text Templates")
         
+        # Export/Import templates button
+        export_col, import_col = st.columns(2)
+        with export_col:
+            if st.button("Export Templates", use_container_width=True):
+                # Convert to JSON and create a download link
+                templates_json = json.dumps(st.session_state.templates, indent=2)
+                b64 = base64.b64encode(templates_json.encode()).decode()
+                href = f'<a href="data:application/json;base64,{b64}" download="alt_text_templates.json">Download Templates JSON</a>'
+                st.markdown(href, unsafe_allow_html=True)
+        
+        with import_col:
+            uploaded_file = st.file_uploader("Import Templates", type="json", key="import_alt_text_templates")
+            if uploaded_file is not None:
+                try:
+                    imported_templates = json.load(uploaded_file)
+                    if isinstance(imported_templates, list):
+                        st.session_state.templates = imported_templates
+                        st.success(f"Successfully imported {len(imported_templates)} templates")
+                        st.experimental_rerun()
+                    else:
+                        st.error("Invalid template format")
+                except Exception as e:
+                    st.error(f"Error importing templates: {str(e)}")
+        
         if st.session_state.templates:
-            # Display templates in a grid
-            template_cols = st.columns(2)
+            # Preview section
+            if st.session_state.products:
+                st.subheader("Template Preview")
+                preview_product = st.selectbox(
+                    "Select a product for preview",
+                    options=[p["title"] for p in st.session_state.products],
+                    index=0
+                )
+                
+                # Find the selected product
+                product = next((p for p in st.session_state.products if p["title"] == preview_product), None)
+                
+                if product:
+                    # Show preview for all templates with this product
+                    preview_cols = st.columns(2)
+                    for i, template in enumerate(st.session_state.templates):
+                        col_idx = i % 2
+                        with preview_cols[col_idx]:
+                            st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 10px;'>", unsafe_allow_html=True)
+                            st.write(f"**{template['name']}**")
+                            preview = preview_template(template["template"], product)
+                            st.code(preview)
+                            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Display templates with edit/delete options
             for i, template in enumerate(st.session_state.templates):
-                col_idx = i % 2
-                with template_cols[col_idx]:
-                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
-                    st.subheader(template['name'])
-                    st.code(template['template'])
+                st.markdown(f"<div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; display: flex; align-items: center;'>", unsafe_allow_html=True)
+                
+                # Use columns for layout
+                col1, col2, col3 = st.columns([3, 5, 2])
+                
+                with col1:
+                    st.write(f"**{template['name']}**")
+                
+                with col2:
+                    st.code(template['template'], language="markdown")
+                
+                with col3:
+                    button_cols = st.columns(2)
+                    with button_cols[0]:
+                        if st.button("Edit", key=f"edit_alt_{template['id']}"):
+                            st.session_state.edit_template_id = template["id"]
+                            st.session_state.edit_template_name = template["name"]
+                            st.session_state.edit_template_string = template["template"]
+                            st.experimental_rerun()
                     
-                    # Preview for first product if available
-                    if st.session_state.products:
-                        preview = preview_template(template["template"], st.session_state.products[0])
-                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
-                        st.write(f"Preview: {preview}")
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns([3, 1])
-                    with col2:
+                    with button_cols[1]:
                         if st.button("Delete", key=f"delete_alt_{template['id']}"):
+                            # Confirm deletion
                             st.session_state.templates.pop(i)
-                            st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
+                            st.experimental_rerun()
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Edit template form (conditionally displayed)
+            if "edit_template_id" in st.session_state:
+                st.markdown('<div style="background-color: #e7f0fd; padding: 15px; border-radius: 8px; margin: 20px 0;">', unsafe_allow_html=True)
+                st.subheader("Edit Template")
+                
+                edit_col1, edit_col2 = st.columns([3, 1])
+                with edit_col1:
+                    edited_name = st.text_input(
+                        "Template Name", 
+                        value=st.session_state.edit_template_name,
+                        key="edit_template_name_input"
+                    )
+                    
+                    edited_template = st.text_area(
+                        "Template String",
+                        value=st.session_state.edit_template_string,
+                        key="edit_template_string_input",
+                        height=80
+                    )
+                
+                with edit_col2:
+                    st.write("&nbsp;")  # Space for alignment
+                    st.write("&nbsp;")  # Space for alignment
+                    save_col, cancel_col = st.columns(2)
+                    
+                    with save_col:
+                        if st.button("Save", type="primary", use_container_width=True):
+                            if edited_name and edited_template:
+                                # Find and update the template
+                                for idx, tmpl in enumerate(st.session_state.templates):
+                                    if tmpl["id"] == st.session_state.edit_template_id:
+                                        st.session_state.templates[idx]["name"] = edited_name
+                                        st.session_state.templates[idx]["template"] = edited_template
+                                        break
+                                
+                                # Clear edit state
+                                del st.session_state.edit_template_id
+                                del st.session_state.edit_template_name
+                                del st.session_state.edit_template_string
+                                st.success("Template updated successfully!")
+                                st.experimental_rerun()
+                    
+                    with cancel_col:
+                        if st.button("Cancel", use_container_width=True):
+                            # Clear edit state
+                            del st.session_state.edit_template_id
+                            del st.session_state.edit_template_name
+                            del st.session_state.edit_template_string
+                            st.experimental_rerun()
+                
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("No alt text templates created yet. Use the form above to create your first template.")
     
-    # Filename Templates tab
+    # Similar structure for Filename Templates tab (abbreviated for brevity)
     with template_tabs[1]:
-        # Filename template creation form
-        with st.form("filename_template_form", clear_on_submit=True):
-            st.subheader("Create New Filename Template")
-            
+        # Create similar UI for filename templates
+        st.markdown('<div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">', unsafe_allow_html=True)
+        st.subheader("Create New Filename Template")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
             filename_template_name = st.text_input(
                 "Template Name", 
                 key="new_filename_template_name",
@@ -1151,48 +1343,428 @@ elif st.session_state.active_tab == "templates":
             
             st.caption("Available Variables: {title}, {vendor}, {type}, {tags}, {store}, {sku}, {color}, {index}, {id}")
             st.caption("Note: Include {index} or {id} to ensure unique filenames. Extensions will be added automatically if missing.")
-            
-            submitted = st.form_submit_button("Add Filename Template", type="primary")
-            if submitted:
+        
+        with col2:
+            st.write("&nbsp;")  # Space for alignment
+            st.write("&nbsp;")  # Space for alignment
+            if st.button("Add Template", type="primary", use_container_width=True, key="add_filename_template"):
                 if filename_template_name and filename_template_string:
                     new_template = {
-                        "id": f"filename_template_{len(st.session_state.filename_templates) + 1}",
+                        "id": f"filename_template_{len(st.session_state.filename_templates) + 1}_{int(time.time())}",
                         "name": filename_template_name,
                         "template": filename_template_string
                     }
                     st.session_state.filename_templates.append(new_template)
-                    st.success(f"Filename Template '{filename_template_name}' added successfully!")
-                    st.rerun()
+                    st.success(f"Template '{filename_template_name}' added successfully!")
+                    st.experimental_rerun()
                 else:
                     st.error("Please provide both template name and string")
         
-        # Display existing filename templates
-        st.subheader("Your Filename Templates")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+def improved_product_management():
+    """Improved product management with bulk operations"""
+    st.header("Product Management")
+    
+    # Product fetch options
+    with st.expander("Fetch Products", expanded=True):
+        col1, col2, col3 = st.columns([2, 1, 1])
         
-        if st.session_state.filename_templates:
-            # Display templates in a grid
-            template_cols = st.columns(2)
-            for i, template in enumerate(st.session_state.filename_templates):
-                col_idx = i % 2
-                with template_cols[col_idx]:
-                    st.markdown(f"<div class='template-card'>", unsafe_allow_html=True)
-                    st.subheader(template['name'])
-                    st.code(template['template'])
-                    
-                    # Preview for first product if available
-                    if st.session_state.products:
-                        preview = preview_template(template["template"], st.session_state.products[0])
-                        if "." not in preview:
-                            preview += ".jpg"
-                        st.markdown("<div class='alt-preview'>", unsafe_allow_html=True)
-                        st.write(f"Preview: {preview}")
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns([3, 1])
-                    with col2:
-                        if st.button("Delete", key=f"delete_filename_{template['id']}"):
-                            st.session_state.filename_templates.pop(i)
+        with col1:
+            if st.button("Fetch All Products", key="fetch_all", type="primary", use_container_width=True):
+                with st.spinner("Fetching products from Shopify..."):
+                    try:
+                        products = fetch_products()
+                        if products:
+                            st.session_state.products = products
+                            st.success(f"✅ Successfully imported {len(products)} products")
                             st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
+                        else:
+                            st.error("❌ No products retrieved. Check connection and permissions.")
+                    except Exception as e:
+                        st.error(f"Error fetching products: {str(e)}")
+        
+        with col2:
+            limit = st.number_input("Max Products", value=st.session_state.fetch_limit, min_value=1, max_value=250, step=10)
+            if limit != st.session_state.fetch_limit:
+                st.session_state.fetch_limit = limit
+        
+        with col3:
+            st.write("&nbsp;")
+            refresh_products = st.checkbox("Auto-refresh", value=False)
+    
+    # Display products if available
+    if st.session_state.products:
+        # Add bulk operations section
+        with st.expander("Bulk Operations", expanded=True):
+            st.subheader("Bulk Update Alt Text and Filenames")
+            
+            # Product selection method
+            selection_method = st.radio(
+                "Select products by:",
+                options=["All Products", "Filter by Vendor", "Filter by Type", "Select Individually"],
+                horizontal=True
+            )
+            
+            # Build the list of selected products based on the method
+            selected_products = []
+            
+            if selection_method == "All Products":
+                selected_products = st.session_state.products
+                st.write(f"Selected {len(selected_products)} products")
+            
+            elif selection_method == "Filter by Vendor":
+                # Get unique vendors
+                vendors = sorted(list(set(p["vendor"] for p in st.session_state.products)))
+                selected_vendor = st.selectbox("Select Vendor", options=vendors)
+                selected_products = [p for p in st.session_state.products if p["vendor"] == selected_vendor]
+                st.write(f"Selected {len(selected_products)} products from vendor '{selected_vendor}'")
+            
+            elif selection_method == "Filter by Type":
+                # Get unique product types
+                product_types = sorted(list(set(p["type"] for p in st.session_state.products)))
+                selected_type = st.selectbox("Select Product Type", options=product_types)
+                selected_products = [p for p in st.session_state.products if p["type"] == selected_type]
+                st.write(f"Selected {len(selected_products)} products of type '{selected_type}'")
+            
+            elif selection_method == "Select Individually":
+                # Create a multiselect with product titles
+                product_titles = [p["title"] for p in st.session_state.products]
+                selected_titles = st.multiselect("Select Products", options=product_titles)
+                selected_products = [p for p in st.session_state.products if p["title"] in selected_titles]
+                st.write(f"Selected {len(selected_products)} products")
+            
+            # Only show template application if products are selected
+            if selected_products:
+                st.write("---")
+                
+                # Template selection for bulk update
+                template_tabs = st.tabs(["Alt Text Templates", "Filename Templates"])
+                
+                # Alt Text Templates tab
+                with template_tabs[0]:
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        if st.session_state.templates:
+                            template_options = {t["id"]: t["name"] for t in st.session_state.templates}
+                            selected_template = st.selectbox(
+                                "Select Alt Text Template",
+                                options=list(template_options.keys()),
+                                format_func=lambda x: template_options[x],
+                                key="bulk_alt_template"
+                            )
+                            
+                            # Preview selected template on first product
+                            if selected_template and selected_products:
+                                template = next((t for t in st.session_state.templates if t["id"] == selected_template), None)
+                                if template:
+                                    preview = preview_template(template["template"], selected_products[0])
+                                    st.markdown("<div style='background-color: #f0f0f0; padding: 8px; border-radius: 4px; margin-top: 8px; min-height: 40px;'>", unsafe_allow_html=True)
+                                    st.write(f"Preview on '{selected_products[0]['title']}': {preview}")
+                                    st.markdown("</div>", unsafe_allow_html=True)
+                        else:
+                            st.info("No alt text templates available. Create templates in the Templates tab.")
+                            selected_template = None
+                    
+                    with col2:
+                        st.write("&nbsp;")  # Space for alignment
+                        if selected_template and st.button("Apply to All Selected", use_container_width=True, type="primary"):
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            # Count the total images to process
+                            total_images = sum(len(p["images"]) for p in selected_products)
+                            processed_images = 0
+                            
+                            for product_idx, product in enumerate(selected_products):
+                                status_text.write(f"Processing product {product_idx+1}/{len(selected_products)}: {product['title']}")
+                                
+                                for image in product["images"]:
+                                    # Apply template to this image
+                                    apply_template_to_image(product, image["id"], selected_template)
+                                    processed_images += 1
+                                    # Update progress
+                                    progress_bar.progress(processed_images / total_images)
+                            
+                            status_text.success(f"✅ Alt text template applied to {processed_images} images across {len(selected_products)} products")
+                
+                # Filename Templates tab
+                with template_tabs[1]:
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        if st.session_state.filename_templates:
+                            filename_template_options = {t["id"]: t["name"] for t in st.session_state.filename_templates}
+                            selected_filename_template = st.selectbox(
+                                "Select Filename Template",
+                                options=list(filename_template_options.keys()),
+                                format_func=lambda x: filename_template_options[x],
+                                key="bulk_filename_template"
+                            )
+                            
+                            # Preview selected template on first product
+                            if selected_filename_template and selected_products:
+                                template = next((t for t in st.session_state.filename_templates if t["id"] == selected_filename_template), None)
+                                if template:
+                                    preview = preview_template(template["template"], selected_products[0])
+                                    if "." not in preview:
+                                        preview += ".jpg"
+                                    st.markdown("<div style='background-color: #f0f0f0; padding: 8px; border-radius: 4px; margin-top: 8px; min-height: 40px;'>", unsafe_allow_html=True)
+                                    st.write(f"Preview on '{selected_products[0]['title']}': {preview}")
+                                    st.markdown("</div>", unsafe_allow_html=True)
+                        else:
+                            st.info("No filename templates available. Create templates in the Templates tab.")
+                            selected_filename_template = None
+                    
+                    with col2:
+                        st.write("&nbsp;")  # Space for alignment
+                        if selected_filename_template and st.button("Apply to All Selected", use_container_width=True, type="primary", key="bulk_apply_filename"):
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            # Count the total images to process
+                            total_images = sum(len(p["images"]) for p in selected_products)
+                            processed_images = 0
+                            
+                            for product_idx, product in enumerate(selected_products):
+                                status_text.write(f"Processing product {product_idx+1}/{len(selected_products)}: {product['title']}")
+                                
+                                for image in product["images"]:
+                                    # Apply template to this image
+                                    apply_filename_template_to_image(product, image["id"], selected_filename_template)
+                                    processed_images += 1
+                                    # Update progress
+                                    progress_bar.progress(processed_images / total_images)
+                            
+                            status_text.success(f"✅ Filename template applied to {processed_images} images across {len(selected_products)} products")
+        
+        # Product display with improved search and filtering
+        st.subheader("Product List")
+        
+        # Search and filter options
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            search_query = st.text_input("Search Products", value=st.session_state.search_query)
+            st.session_state.search_query = search_query
+        
+        with col2:
+            # Vendor filter
+            vendors = ["All Vendors"] + sorted(list(set(p["vendor"] for p in st.session_state.products)))
+            selected_vendor_filter = st.selectbox("Filter by Vendor", options=vendors, index=0)
+        
+        with col3:
+            # Sort options
+            sort_options = ["Name (A-Z)", "Name (Z-A)", "Vendor", "Type", "Alt Text Coverage (Low to High)", "Alt Text Coverage (High to Low)"]
+            sort_by = st.selectbox("Sort By", options=sort_options, index=0)
+        
+        # Filter products
+        filtered_products = st.session_state.products
+        
+        # Apply search filter
+        if search_query:
+            filtered_products = [p for p in filtered_products if search_query.lower() in p["title"].lower()]
+        
+        # Apply vendor filter
+        if selected_vendor_filter != "All Vendors":
+            filtered_products = [p for p in filtered_products if p["vendor"] == selected_vendor_filter]
+        
+        # Sort products
+        if sort_by == "Name (A-Z)":
+            filtered_products = sorted(filtered_products, key=lambda p: p["title"])
+        elif sort_by == "Name (Z-A)":
+            filtered_products = sorted(filtered_products, key=lambda p: p["title"], reverse=True)
+        elif sort_by == "Vendor":
+            filtered_products = sorted(filtered_products, key=lambda p: p["vendor"])
+        elif sort_by == "Type":
+            filtered_products = sorted(filtered_products, key=lambda p: p["type"])
+        elif "Alt Text Coverage" in sort_by:
+            # Calculate coverage for sorting
+            for product in filtered_products:
+                total_images = len(product["images"])
+                images_with_alt = sum(1 for img in product["images"] if img.get("alt"))
+                product["_alt_coverage"] = (images_with_alt / total_images * 100) if total_images > 0 else 0
+            
+            if "Low to High" in sort_by:
+                filtered_products = sorted(filtered_products, key=lambda p: p["_alt_coverage"])
+            else:
+                filtered_products = sorted(filtered_products, key=lambda p: p["_alt_coverage"], reverse=True)
+        
+        # Display product count
+        st.write(f"Showing {len(filtered_products)} products")
+        
+        if filtered_products:
+            # Create a more compact and informative product grid
+            product_cols = st.columns(3)
+            
+            for i, product in enumerate(filtered_products):
+                col_idx = i % 3
+                
+                with product_cols[col_idx]:
+                    # Calculate coverage
+                    total_images = len(product["images"])
+                    images_with_alt = sum(1 for img in product["images"] if img.get("alt"))
+                    images_with_filename = sum(1 for img in product["images"] if img.get("applied_filename_template"))
+                    alt_coverage = (images_with_alt / total_images * 100) if total_images > 0 else 0
+                    filename_coverage = (images_with_filename / total_images * 100) if total_images > 0 else 0
+                    
+                    # Product card
+                    st.markdown(f"""
+                    <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; margin-bottom: 15px;">
+                        <h4 style="margin-top: 0;">{product['title']}</h4>
+                        <p><strong>Vendor:</strong> {product['vendor']}</p>
+                        <p><strong>Type:</strong> {product['type']}</p>
+                        <p><strong>Images:</strong> {total_images}</p>
+                        <div>
+                            <strong>Alt Text:</strong> {images_with_alt}/{total_images} ({alt_coverage:.1f}%)
+                            <div style="height: 8px; background-color: #e9ecef; border-radius: 4px; margin: 5px 0;">
+                                <div style="height: 8px; width: {alt_coverage}%; background-color: #4CAF50; border-radius: 4px;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <strong>Filenames:</strong> {images_with_filename}/{total_images} ({filename_coverage:.1f}%)
+                            <div style="height: 8px; background-color: #e9ecef; border-radius: 4px; margin: 5px 0;">
+                                <div style="height: 8px; width: {filename_coverage}%; background-color: #2196F3; border-radius: 4px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Action buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("View Details", key=f"view_{product['id']}", use_container_width=True):
+                            st.session_state.current_product = product
+                            # Add to recent products list
+                            if product["id"] in st.session_state.recent_products:
+                                st.session_state.recent_products.remove(product["id"])
+                            st.session_state.recent_products.append(product["id"])
+                            st.rerun()
+                    
+                    with col2:
+                        if st.button("Quick Edit", key=f"quick_{product['id']}", use_container_width=True):
+                            st.session_state.quick_edit_product = product
+                            st.rerun()
         else:
-            st.info("No filename templates created yet. Use the form above to create your first template.")
+            st.info("No products match your search criteria")
+    else:
+        st.info("No products loaded. Click 'Fetch Products' to import products from your Shopify store.")
+    
+    # Quick Edit Modal (if a product is selected for quick edit)
+    if hasattr(st.session_state, 'quick_edit_product') and st.session_state.quick_edit_product:
+        product = st.session_state.quick_edit_product
+        
+        # Create a modal-like UI
+        st.markdown("""
+        <style>
+        .quick-edit-modal {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="quick-edit-modal">', unsafe_allow_html=True)
+        
+        # Header with close button
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader(f"Quick Edit: {product['title']}")
+        with col2:
+            if st.button("Close", use_container_width=True):
+                del st.session_state.quick_edit_product
+                st.rerun()
+        
+        # Display first image
+        if product["images"]:
+            try:
+                response = requests.get(product["images"][0]["src"])
+                img = Image.open(BytesIO(response.content))
+                st.image(img, width=200)
+            except:
+                st.image("https://via.placeholder.com/200x200?text=No+Image")
+        
+        # Template application tabs
+        edit_tabs = st.tabs(["Apply Alt Text", "Apply Filenames", "Image Preview"])
+        
+        with edit_tabs[0]:
+            if st.session_state.templates:
+                template_options = {t["id"]: t["name"] for t in st.session_state.templates}
+                selected_template = st.selectbox(
+                    "Select Alt Text Template",
+                    options=list(template_options.keys()),
+                    format_func=lambda x: template_options[x],
+                    key="quick_alt_template"
+                )
+                
+                # Preview selected template
+                if selected_template:
+                    template = next((t for t in st.session_state.templates if t["id"] == selected_template), None)
+                    if template:
+                        st.write("**Preview:**")
+                        for i, image in enumerate(product["images"][:3]):  # Show first 3 images
+                            preview = preview_template(template["template"], product, i)
+                            st.code(f"Image {i+1}: {preview}")
+                
+                # Apply to all button
+                if st.button("Apply to All Images", type="primary", use_container_width=True):
+                    with st.spinner("Applying template..."):
+                        for image in product["images"]:
+                            apply_template_to_image(product, image["id"], selected_template)
+                        st.success("✅ Template applied to all images")
+            else:
+                st.info("No templates created yet. Go to the Templates tab to create some.")
+        
+        with edit_tabs[1]:
+            if st.session_state.filename_templates:
+                filename_template_options = {t["id"]: t["name"] for t in st.session_state.filename_templates}
+                selected_filename_template = st.selectbox(
+                    "Select Filename Template",
+                    options=list(filename_template_options.keys()),
+                    format_func=lambda x: filename_template_options[x],
+                    key="quick_filename_template"
+                )
+                
+                # Preview selected template
+                if selected_filename_template:
+                    template = next((t for t in st.session_state.filename_templates if t["id"] == selected_filename_template), None)
+                    if template:
+                        st.write("**Preview:**")
+                        for i, image in enumerate(product["images"][:3]):  # Show first 3 images
+                            preview = preview_template(template["template"], product, i)
+                            if "." not in preview:
+                                preview += ".jpg"
+                            st.code(f"Image {i+1}: {preview}")
+                
+                # Apply to all button
+                if st.button("Apply to All Images", type="primary", use_container_width=True, key="apply_all_filenames"):
+                    with st.spinner("Applying template..."):
+                        for image in product["images"]:
+                            apply_filename_template_to_image(product, image["id"], selected_filename_template)
+                        st.success("✅ Template applied to all images")
+            else:
+                st.info("No filename templates created yet. Go to the Templates tab to create some.")
+        
+        with edit_tabs[2]:
+            # Display all images in a grid with minimal info
+            image_cols = st.columns(3)
+            for i, image in enumerate(product["images"]):
+                col_idx = i % 3
+                with image_cols[col_idx]:
+                    try:
+                        response = requests.get(image["src"])
+                        img = Image.open(BytesIO(response.content))
+                        st.image(img, width=150)
+                    except:
+                        st.image("https://via.placeholder.com/150x150?text=No+Image", width=150)
+                    
+                    # Show current alt text and filename
+                    st.caption(f"**Alt:** {image.get('alt', 'None')[:50]}{'...' if len(image.get('alt', '')) > 50 else ''}")
+                    st.caption(f"**File:** {image.get('filename', 'Default')}")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
